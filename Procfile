@@ -1,1 +1,1 @@
-web: ./procfile.sh
+web: python3 run.py
