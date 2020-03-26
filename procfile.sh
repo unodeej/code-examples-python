@@ -4,5 +4,5 @@ if [ "$DEBUG" = "True" ]; then
         FLASK_ENV="development"
         python run.py
 else
-        gunicorn app:app
+        python run.py#gunicorn app:app
 fi
