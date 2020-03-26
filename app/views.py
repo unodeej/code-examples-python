@@ -5,19 +5,7 @@ from flask_oauthlib.client import OAuth
 from datetime import datetime, timedelta
 import requests
 import uuid
-from app import app, ds_config, eg001_embedded_signing, \
-            eg002_signing_via_email, eg003_list_envelopes, \
-            eg004_envelope_info, eg005_envelope_recipients, \
-            eg006_envelope_docs, eg007_envelope_get_doc, \
-            eg008_create_template, eg009_use_template, \
-            eg010_send_binary_docs, eg011_embedded_sending, \
-            eg012_embedded_console, eg013_add_doc_to_template, \
-            eg014_collect_payment, eg015_envelope_tab_data, \
-            eg016_set_tab_values, eg017_set_template_tab_values, \
-            eg018_envelope_custom_field_data, eg019_access_code_authentication, \
-            eg020_sms_authentication, eg021_phone_authentication, \
-            eg022_kba_authentication, eg023_idv_authentication
-
+from app import app, ds_config, eg001_embedded_signing
 
 @app.route("/")
 def index():
@@ -36,118 +24,91 @@ def ds_must_authenticate():
 
 @app.route("/eg001", methods=["GET", "POST"])
 def eg001():
-    return eg001_embedded_signing.controller()
+    if request.method == 'POST':
+
+        return redirect(eg001_embedded_signing.controller(request.form), code=302)
+    else:
+        print('------ {0}'.format(request.form))
+        return '''
+            <html lang="en"><body><form action="{url}" method="post" role="form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+            <label for="last_name">Last name: </label>
+            <input type="text" id="last_name" name="last_name" value = "Doe"/>
+
+            <label for="first_name">First name: </label>
+            <input type="text" id="first_name" name="first_name" value = "John"/>
+
+            <label for="middle_initial">MI: </label>
+            <input type="text" id="middle_initial" name="middle_initial" value = "R"/>
+
+            <br>
+
+            <label for="gender">Gender: </label><br>
+            <input type="radio" id="male" name="gender" value = "male" checked/>
+            <label for="male">Male</label><br>
+            <input type="radio" id="female" name="gender" value = "female"/>
+            <label for="female">Female</label><br>
 
 
-@app.route("/eg002", methods=["GET", "POST"])
-def eg002():
-    return eg002_signing_via_email.controller()
+            <br><br>
+
+            <label for="mailing_address">Street address: </label>
+            <input type="text" id="mailing_address" name="mailing_address" value = "123 Fake Street"/>
+
+            <br>
+
+            <label for="city">City: </label>
+            <input type="text" id="city" name="city" value = "City"/>
+
+            <label for="state">State: </label>
+            <input type="text" id="state" name="state" value = "CA"/>
+
+            <br>
+
+            <label for="zip">ZIP: </label>
+            <input type="text" id="zip" name="zip" value = "11111"/>
+
+            <label for="county">County: </label>
+            <input type="text" id="county" name="county" value = "County"/>
+
+            <br><br>
+
+            <label for="home_tel">Home telephone #: </label>
+            <input type="text" id="home_tel" name="home_tel" value = "(555) 555-5555"/>
+
+            <label for="email">Email: </label>
+            <input type="text" id="email" name="email" value = "fake@email.com"/>
+
+            <br><br>
+
+            <label for="dob">Date of birth: </label>
+            <input type="text" id="dob" name="dob" value = "01/01/1950"/>
+
+            <label for="ssn">Social security #: </label>
+            <input type="text" id="ssn" name="ssn" value = "555-55-5555"/>
+
+            <br><br>
+
+            <label for="req_start_date">Requested Start Date: </label>
+            <input type="text" id="req_start_date" name="req_start_date" value = "01/01/2020"/>
+
+            <br><br>
+
+            <label for="pref_lang">Preferred language: </label><br>
+            <input type="radio" id="english" name="pref_lang" value = "english" checked/>
+            <label for="english">English</label><br>
+            <input type="radio" id="other" name="pref_lang" value = "other"/>
+            <label for="other">Other</label>
+            <input type="text" id="other_lang" name="other_lang"/>
+
+            <br>
 
 
-@app.route("/eg003", methods=["GET", "POST"])
-def eg003():
-    return eg003_list_envelopes.controller()
-
-
-@app.route("/eg004", methods=["GET", "POST"])
-def eg004():
-    return eg004_envelope_info.controller()
-
-
-@app.route("/eg005", methods=["GET", "POST"])
-def eg005():
-    return eg005_envelope_recipients.controller()
-
-
-@app.route("/eg006", methods=["GET", "POST"])
-def eg006():
-    return eg006_envelope_docs.controller()
-
-
-@app.route("/eg007", methods=["GET", "POST"])
-def eg007():
-    return eg007_envelope_get_doc.controller()
-
-
-@app.route("/eg008", methods=["GET", "POST"])
-def eg008():
-    return eg008_create_template.controller()
-
-
-@app.route("/eg009", methods=["GET", "POST"])
-def eg009():
-    return eg009_use_template.controller()
-
-
-@app.route("/eg010", methods=["GET", "POST"])
-def eg010():
-    return eg010_send_binary_docs.controller()
-
-
-@app.route("/eg011", methods=["GET", "POST"])
-def eg011():
-    return eg011_embedded_sending.controller()
-
-
-@app.route("/eg012", methods=["GET", "POST"])
-def eg012():
-    return eg012_embedded_console.controller()
-
-
-@app.route("/eg013", methods=["GET", "POST"])
-def eg013():
-    return eg013_add_doc_to_template.controller()
-
-
-@app.route("/eg014", methods=["GET", "POST"])
-def eg014():
-    return eg014_collect_payment.controller()
-
-
-@app.route("/eg015", methods=["GET", "POST"])
-def eg015():
-    return eg015_envelope_tab_data.controller()
-
-
-@app.route("/eg016", methods=["GET", "POST"])
-def eg016():
-    return eg016_set_tab_values.controller()
-
-
-@app.route("/eg017", methods=["GET", "POST"])
-def eg017():
-    return eg017_set_template_tab_values.controller()
-
-
-@app.route("/eg018", methods=["GET", "POST"])
-def eg018():
-    return eg018_envelope_custom_field_data.controller()
-
-
-@app.route("/eg019", methods=["GET", "POST"])
-def eg019():
-    return eg019_access_code_authentication.controller()
-
-
-@app.route("/eg020", methods=["GET", "POST"])
-def eg020():
-    return eg020_sms_authentication.controller()
-
-
-@app.route("/eg021", methods=["GET", "POST"])
-def eg021():
-    return eg021_phone_authentication.controller()
-
-
-@app.route("/eg022", methods=["GET", "POST"])
-def eg022():
-    return eg022_kba_authentication.controller()
-
-
-@app.route("/eg023", methods=["GET", "POST"])
-def eg023():
-    return eg023_idv_authentication.controller()
-
+            <input type="submit" value="Sign the document!"
+                style="width:13em;height:2em;background:#1f32bb;color:white;font:bold 1.5em arial;margin: 3em;"/>
+            </form></body>
+        '''.format(url=request.url)
 
 @app.route("/ds_return")
 def ds_return():
@@ -287,4 +248,3 @@ def not_found_error(error):
 @app.errorhandler(500)
 def internal_error(error):
     return render_template("500.html"), 500
-

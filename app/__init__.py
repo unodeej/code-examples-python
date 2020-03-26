@@ -10,6 +10,7 @@ app = Flask(__name__)
 app.config.from_pyfile("config.py")
 app.secret_key = ds_config.DS_CONFIG["session_secret"]
 csrf = CSRFProtect(app) # See https://flask-wtf.readthedocs.io/en/stable/csrf.html
+csrf.init_app(app)
 
 if "DYNO" in os.environ:  # On Heroku?
     import logging

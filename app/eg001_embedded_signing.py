@@ -20,17 +20,17 @@ authentication_method = "None" # How is this application authenticating
 demo_docs_path = path.abspath(path.join(path.dirname(path.realpath(__file__)), "static/demo_documents"))
 
 
-def controller():
+def controller(form_data):
     """Controller router using the HTTP method"""
     if request.method == "GET":
         return get_controller()
     elif request.method == "POST":
-        return create_controller()
+        return create_controller(form_data)
     else:
         return render_template("404.html"), 404
 
 
-def create_controller():
+def create_controller(form_data):
     """
     1. Check the token
     2. Call the worker method
@@ -58,7 +58,7 @@ def create_controller():
         }
 
         try:
-            results = worker(args)
+            results = worker(args, form_data)
         except ApiException as err:
             error_body_json = err and hasattr(err, "body") and err.body
             # we can pull the DocuSign error code and message from the response body
@@ -91,7 +91,7 @@ def create_controller():
 
 
 # ***DS.snippet.0.start
-def worker(args):
+def worker(args, form_data):
     """
     1. Create the envelope request object
     2. Send the envelope
@@ -100,7 +100,7 @@ def worker(args):
     """
     envelope_args = args["envelope_args"]
     # 1. Create the envelope request object
-    envelope_definition = make_envelope(envelope_args)
+    envelope_definition = make_envelope(envelope_args, form_data)
 
     # 2. call Envelopes::create API method
     # Exceptions will be caught by the calling function
@@ -110,7 +110,7 @@ def worker(args):
 
     envelope_api = EnvelopesApi(api_client)
     results = envelope_api.create_envelope(args["account_id"], envelope_definition=envelope_definition)
-    
+
     envelope_id = results.envelope_id
     app.logger.info(f"Envelope was created. EnvelopeId {envelope_id}")
 
@@ -130,7 +130,94 @@ def worker(args):
     return {"envelope_id": envelope_id, "redirect_url": results.url}
 
 
-def make_envelope(args):
+# Author: DJ Uno
+# This function sets up the signature and text field tabs for the document.
+def setup_tabs(args):
+    # Set the values for the fields in the template
+
+    anchor_strings = ["Last name:",
+        "First name:",
+        "MI:",
+        "Gender:",
+        "Primary residence address",
+        "City:",
+        "State:",
+        "ZIP:",
+        "County:",
+        "Home telephone #:",
+        "Email address:",
+        "Date of birth:",
+        "Social Security #:",
+        "Your requested start date: The 1st of month",
+        "Preferred language:",
+        "Other:" ]
+
+    # Create Text tabs
+    text_fields = []
+    isMale = False;
+    isEnglish = False;
+
+    for i in range(0, len(args)):
+        if args[i][0] == "text":
+            text_fields.append(
+                Text( # DocuSign SignHere field/tab
+                    document_id = '1', page_number = '1',
+                    anchor_string = anchor_strings[i], anchor_x_offset = 0, anchor_y_offset = 0.1, anchor_units = "inches",
+                    anchor_case_sensitive = True,
+                    font = "helvetica", font_size = "size14",
+                    tab_label = "added text field", height = "23",
+                    width = "84", required = "false",
+                    value = args[i][1],
+                    locked = "true", tab_id = "name")
+                )
+        elif args[i][0] == "radio":
+            if args[i][1] == "male":
+                isMale = True
+            elif args[i][1] == "english":
+                isEnglish = True
+
+    radio_tabs_gender = [
+        Radio( # DocuSign SignHere field/tab
+            anchor_string = "Male", anchor_x_offset = -0.29, anchor_y_offset = -0.05, anchor_units = "inches", selected = isMale),
+        Radio( # DocuSign SignHere field/tab
+            anchor_string = "Female", anchor_x_offset = -0.29, anchor_y_offset = -0.05, anchor_units = "inches", selected = not(isMale))
+        ]
+
+    radio_group_gender = RadioGroup(
+        group_name = "radio1",
+        radios = radio_tabs_gender
+    )
+
+    radio_tabs_language = [
+        Radio( # DocuSign SignHere field/tab
+            anchor_string = "English", anchor_x_offset = -0.29, anchor_y_offset = -0.05, anchor_units = "inches", selected = isEnglish),
+        Radio( # DocuSign SignHere field/tab
+            anchor_string = "Other:", anchor_x_offset = -0.29, anchor_y_offset = -0.05, anchor_units = "inches", selected = not(isEnglish))
+        ]
+
+    radio_group_language = RadioGroup(
+        group_name = "radio2",
+        radios = radio_tabs_language
+    )
+
+    # Create a sign_here tab (field on the document)
+    sign_here = [
+        SignHere( # DocuSign SignHere field/tab
+            document_id = '1', page_number = '1', recipient_id = '1', tab_label = 'SignHereTab',
+            anchor_string = "Signature:", anchor_x_offset = 1, anchor_units = "inches",
+            anchor_case_sensitive = True)
+        ]
+
+    tabsObj = Tabs(
+        text_tabs = text_fields,
+        radio_group_tabs = [radio_group_gender, radio_group_language],
+        sign_here_tabs = sign_here
+    )
+
+
+    return tabsObj
+
+def make_envelope(args, form_data):
     """
     Creates envelope
     args -- parameters for the envelope:
@@ -162,15 +249,28 @@ def make_envelope(args):
         client_user_id = args["signer_client_id"]
     )
 
-    # Create a sign_here tab (field on the document)
-    sign_here = SignHere( # DocuSign SignHere field/tab
-        anchor_string = "/sn1/", anchor_units = "pixels",
-        anchor_y_offset = "10", anchor_x_offset = "20"
-    )
+    INPUT_DATA = [
+        ["text", form_data.getlist('last_name')[0] ],
+        ["text", form_data.getlist('first_name')[0] ],
+        ["text", form_data.getlist('middle_initial')[0] ],
+        ["radio", form_data.getlist('gender')[0] ],
+        ["text", form_data.getlist('mailing_address')[0] ],
+        ["text", form_data.getlist('city')[0] ],
+        ["text", form_data.getlist('state')[0] ],
+        ["text", form_data.getlist('zip')[0] ],
+        ["text", form_data.getlist('county')[0] ],
+        ["text", form_data.getlist('home_tel')[0] ],
+        ["text", form_data.getlist('email')[0] ],
+        ["text", form_data.getlist('dob')[0] ],
+        ["text", form_data.getlist('ssn')[0] ],
+        ["text", form_data.getlist('req_start_date')[0] ],
+        ["radio", form_data.getlist('pref_lang')[0] ],
+        ["text", form_data.getlist('other_lang')[0] ]
+    ]
 
     # Add the tabs model (including the sign_here tab) to the signer
     # The Tabs object wants arrays of the different field/tab types
-    signer.tabs = Tabs(sign_here_tabs = [sign_here])
+    signer.tabs = setup_tabs(INPUT_DATA)
 
     # Next, create the top level envelope definition and populate it.
     envelope_definition = EnvelopeDefinition(
@@ -202,4 +302,3 @@ def get_controller():
         # Save the current operation so it will be resumed after authentication
         session["eg"] = url_for(eg)
         return redirect(url_for("ds_must_authenticate"))
-
