@@ -1,11 +1,18 @@
 """Defines the app's routes. Includes OAuth2 support for DocuSign"""
 
-from flask import render_template, url_for, redirect, session, flash, request
+from flask import render_template, url_for, redirect, session, flash, request, render_template
+from flask_wtf import FlaskForm
+from wtforms import StringField
+from wtforms.validators import DataRequired
+from app.forms import ClientForm
 from flask_oauthlib.client import OAuth
 from datetime import datetime, timedelta
 import requests
 import uuid
 from app import app, ds_config, eg001_embedded_signing
+
+class MyForm(FlaskForm):
+    name = StringField('name', validators=[DataRequired()])
 
 @app.route("/")
 def index():
@@ -24,91 +31,32 @@ def ds_must_authenticate():
 
 @app.route("/eg001", methods=["GET", "POST"])
 def eg001():
+    # This needs to be executed here, so that the auth process can be carried out
+    return eg001_embedded_signing.controller()
     if request.method == 'POST':
-
-        return redirect(eg001_embedded_signing.controller(request.form), code=302)
+        return #redirect(eg001_embedded_signing.controller(request.form), code=302)
     else:
-        print('------ {0}'.format(request.form))
-        return '''
-            <html lang="en"><body><form action="{url}" method="post" role="form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        form = ClientForm()
 
-            <label for="last_name">Last name: </label>
-            <input type="text" id="last_name" name="last_name" value = "Doe"/>
+        if form.validate() == False:
+            flash:('All fields are required.')
+        return render_template('form.html', form = form)
 
-            <label for="first_name">First name: </label>
-            <input type="text" id="first_name" name="first_name" value = "John"/>
+@app.route('/submit', methods=('GET', 'POST'))
+def submit():
+    form = MyForm()
+    if form.validate_on_submit():
+        return redirect('/success')
+    return render_template('submit.html', form=form)
 
-            <label for="middle_initial">MI: </label>
-            <input type="text" id="middle_initial" name="middle_initial" value = "R"/>
+@app.route('/success',methods = ['GET','POST'])
+def success():
+   return eg001_embedded_signing.create_controller()
 
-            <br>
-
-            <label for="gender">Gender: </label><br>
-            <input type="radio" id="male" name="gender" value = "male" checked/>
-            <label for="male">Male</label><br>
-            <input type="radio" id="female" name="gender" value = "female"/>
-            <label for="female">Female</label><br>
+if __name__ == '__main__':
+   app.run(debug = True)
 
 
-            <br><br>
-
-            <label for="mailing_address">Street address: </label>
-            <input type="text" id="mailing_address" name="mailing_address" value = "123 Fake Street"/>
-
-            <br>
-
-            <label for="city">City: </label>
-            <input type="text" id="city" name="city" value = "City"/>
-
-            <label for="state">State: </label>
-            <input type="text" id="state" name="state" value = "CA"/>
-
-            <br>
-
-            <label for="zip">ZIP: </label>
-            <input type="text" id="zip" name="zip" value = "11111"/>
-
-            <label for="county">County: </label>
-            <input type="text" id="county" name="county" value = "County"/>
-
-            <br><br>
-
-            <label for="home_tel">Home telephone #: </label>
-            <input type="text" id="home_tel" name="home_tel" value = "(555) 555-5555"/>
-
-            <label for="email">Email: </label>
-            <input type="text" id="email" name="email" value = "fake@email.com"/>
-
-            <br><br>
-
-            <label for="dob">Date of birth: </label>
-            <input type="text" id="dob" name="dob" value = "01/01/1950"/>
-
-            <label for="ssn">Social security #: </label>
-            <input type="text" id="ssn" name="ssn" value = "555-55-5555"/>
-
-            <br><br>
-
-            <label for="req_start_date">Requested Start Date: </label>
-            <input type="text" id="req_start_date" name="req_start_date" value = "01/01/2020"/>
-
-            <br><br>
-
-            <label for="pref_lang">Preferred language: </label><br>
-            <input type="radio" id="english" name="pref_lang" value = "english" checked/>
-            <label for="english">English</label><br>
-            <input type="radio" id="other" name="pref_lang" value = "other"/>
-            <label for="other">Other</label>
-            <input type="text" id="other_lang" name="other_lang"/>
-
-            <br>
-
-
-            <input type="submit" value="Sign the document!"
-                style="width:13em;height:2em;background:#1f32bb;color:white;font:bold 1.5em arial;margin: 3em;"/>
-            </form></body>
-        '''.format(url=request.url)
 
 @app.route("/ds_return")
 def ds_return():

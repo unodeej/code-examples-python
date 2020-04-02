@@ -4,6 +4,7 @@ from flask import render_template, url_for, redirect, session, flash, request
 from os import path
 import json
 from app import app, ds_config, views
+from app.forms import ClientForm
 import base64
 import re
 from docusign_esign import *
@@ -20,35 +21,85 @@ authentication_method = "None" # How is this application authenticating
 demo_docs_path = path.abspath(path.join(path.dirname(path.realpath(__file__)), "static/demo_documents"))
 
 
-def controller(form_data):
+def controller():
     """Controller router using the HTTP method"""
     if request.method == "GET":
         return get_controller()
     elif request.method == "POST":
-        return create_controller(form_data)
+        form = ClientForm()
+
+        if form.validate() == False:
+            flash:('All fields are required.')
+        return render_template('form.html', form = form)
     else:
         return render_template("404.html"), 404
 
 
-def create_controller(form_data):
+def create_controller():
     """
     1. Check the token
     2. Call the worker method
     3. Redirect the user to the signing ceremony
     """
+
+    print("FORM DATA: " + str(request.form))
+
+
     minimum_buffer_min = 3
     if views.ds_token_ok(minimum_buffer_min):
         # 2. Call the worker method
         # More data validation would be a good idea here
         # Strip anything other than characters listed
         pattern = re.compile("([^\w \-\@\.\,])+")
-        signer_email = pattern.sub("", request.form.get("signer_email"))
-        signer_name  = pattern.sub("", request.form.get("signer_name"))
+
+        last_name    = pattern.sub("", request.form.get("last_name"))
+        first_name   = pattern.sub("", request.form.get("first_name"))
+        middle_initial = pattern.sub("", request.form.get("middle_initial"))
+
+        gender       = pattern.sub("", request.form.get("gender"))
+
+        mailing_address = pattern.sub("", request.form.get("mailing_address"))
+        city         = pattern.sub("", request.form.get("city"))
+        state        = pattern.sub("", request.form.get("state"))
+        zip          = pattern.sub("", request.form.get("zip"))
+        county       = pattern.sub("", request.form.get("county"))
+
+        home_tel     = pattern.sub("", request.form.get("home_tel"))
+        email        = pattern.sub("", request.form.get("email"))
+
+        dob          = pattern.sub("", request.form.get("dob"))
+        ssn          = pattern.sub("", request.form.get("ssn"))
+
+        req_start_date = pattern.sub("", request.form.get("req_start_date"))
+        pref_lang    = pattern.sub("", request.form.get("pref_lang"))
+
         envelope_args = {
-            "signer_email": signer_email,
-            "signer_name": signer_name,
+            "signer_email": email,
+            "signer_name": first_name + " " + last_name,
             "signer_client_id": signer_client_id,
-            "ds_return_url": url_for("ds_return", _external=True),
+
+            "last_name": last_name,
+            "first_name": first_name,
+            "middle_initial": middle_initial,
+
+            "gender": gender,
+
+            "mailing_address": mailing_address,
+            "city": city,
+            "state": state,
+            "zip": zip,
+            "county": county,
+
+            "home_tel": home_tel,
+            "email": email,
+
+            "dob": dob,
+            "ssn": ssn,
+
+            "req_start_date": req_start_date,
+            "pref_lang": pref_lang,
+
+            "ds_return_url": url_for("ds_return", _external=True)
         }
         args = {
             "account_id": session["ds_account_id"],
@@ -58,7 +109,7 @@ def create_controller(form_data):
         }
 
         try:
-            results = worker(args, form_data)
+            results = worker(args)
         except ApiException as err:
             error_body_json = err and hasattr(err, "body") and err.body
             # we can pull the DocuSign error code and message from the response body
@@ -67,6 +118,7 @@ def create_controller(form_data):
             error_message = error_body and "message" in error_body and error_body["message"]
             # In production, may want to provide customized error messages and
             # remediation advice to the user.
+
             return render_template("error.html",
                                    err=err,
                                    error_code=error_code,
@@ -91,7 +143,7 @@ def create_controller(form_data):
 
 
 # ***DS.snippet.0.start
-def worker(args, form_data):
+def worker(args):
     """
     1. Create the envelope request object
     2. Send the envelope
@@ -100,7 +152,7 @@ def worker(args, form_data):
     """
     envelope_args = args["envelope_args"]
     # 1. Create the envelope request object
-    envelope_definition = make_envelope(envelope_args, form_data)
+    envelope_definition = make_envelope(envelope_args)
 
     # 2. call Envelopes::create API method
     # Exceptions will be caught by the calling function
@@ -127,6 +179,7 @@ def worker(args, form_data):
     results = envelope_api.create_recipient_view(args["account_id"], envelope_id,
         recipient_view_request = recipient_view_request)
 
+    print ("MYURL" + results.url)
     return {"envelope_id": envelope_id, "redirect_url": results.url}
 
 
@@ -217,7 +270,7 @@ def setup_tabs(args):
 
     return tabsObj
 
-def make_envelope(args, form_data):
+def make_envelope(args):
     """
     Creates envelope
     args -- parameters for the envelope:
@@ -250,23 +303,42 @@ def make_envelope(args, form_data):
     )
 
     INPUT_DATA = [
-        ["text", form_data.getlist('last_name')[0] ],
-        ["text", form_data.getlist('first_name')[0] ],
-        ["text", form_data.getlist('middle_initial')[0] ],
-        ["radio", form_data.getlist('gender')[0] ],
-        ["text", form_data.getlist('mailing_address')[0] ],
-        ["text", form_data.getlist('city')[0] ],
-        ["text", form_data.getlist('state')[0] ],
-        ["text", form_data.getlist('zip')[0] ],
-        ["text", form_data.getlist('county')[0] ],
-        ["text", form_data.getlist('home_tel')[0] ],
-        ["text", form_data.getlist('email')[0] ],
-        ["text", form_data.getlist('dob')[0] ],
-        ["text", form_data.getlist('ssn')[0] ],
-        ["text", form_data.getlist('req_start_date')[0] ],
-        ["radio", form_data.getlist('pref_lang')[0] ],
-        ["text", form_data.getlist('other_lang')[0] ]
+        ["text", args["signer_name"] ],
+        ["text", args["signer_name"] ],
+        ["text", args["signer_age"] ],
+        ["radio", args["signer_age"] ],
+        ["text", args["signer_age"] ],
+        ["text", args["signer_age"] ],
+        ["text", args["signer_age"] ],
+        ["text", args["signer_age"] ],
+        ["text", args["signer_age"] ],
+        ["text", args["signer_age"] ],
+        ["text", args["signer_email"] ],
+        ["text", args["signer_age"] ],
+        ["text", args["signer_age"] ],
+        ["text", args["signer_age"] ],
+        ["radio", args["signer_age"] ],
+        ["text", args["signer_age"] ]
     ]
+
+    # INPUT_DATA = [
+    #     ["text", args["signer_name"] ],
+    #     ["text", args["signer_name"] ],
+    #     ["text", form_data.getlist('middle_initial')[0] ],
+    #     ["radio", form_data.getlist('gender')[0] ],
+    #     ["text", form_data.getlist('mailing_address')[0] ],
+    #     ["text", form_data.getlist('city')[0] ],
+    #     ["text", form_data.getlist('state')[0] ],
+    #     ["text", form_data.getlist('zip')[0] ],
+    #     ["text", form_data.getlist('county')[0] ],
+    #     ["text", form_data.getlist('home_tel')[0] ],
+    #     ["text", args["signer_email"] ],
+    #     ["text", form_data.getlist('dob')[0] ],
+    #     ["text", form_data.getlist('ssn')[0] ],
+    #     ["text", form_data.getlist('req_start_date')[0] ],
+    #     ["radio", form_data.getlist('pref_lang')[0] ],
+    #     ["text", form_data.getlist('other_lang')[0] ]
+    # ]
 
     # Add the tabs model (including the sign_here tab) to the signer
     # The Tabs object wants arrays of the different field/tab types
