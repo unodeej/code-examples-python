@@ -1,2 +1,1 @@
-web: python3 run.py
-old: ./procfile.sh
+web: gunicorn app:app
