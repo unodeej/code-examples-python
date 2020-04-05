@@ -5,7 +5,8 @@ import os, sys
 if (os.environ.get("DEBUG", False) == "True"):
     app.config["DEBUG"] = True
 
-    port = int(os.environ.get("PORT", 80))
+    #port = int(os.environ.get("PORT", 80))
+    port = process.env.PORT || 80
     print >> sys.stderr, "DEBUG Mode! Port: " + str(port)
     app.run(host="0.0.0.0", port=port, debug=True)
 
