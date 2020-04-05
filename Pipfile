@@ -8,8 +8,6 @@ requests = "*"
 flask = "*"
 flask_wtf = "*"
 Flask-OAuthlib = "*"
-werkzeug = "*"
-url_quote = "*"
 
 [dev-packages]
 Werkzeug = "0.14.1"
