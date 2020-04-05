@@ -7,9 +7,10 @@ name = "pypi"
 requests = "*"
 flask = "*"
 flask_wtf = "*"
+Flask-OAuthlib = "*"
 
 [dev-packages]
-Flask-OAuthlib = "*"
+
 
 [requires]
 python_version = "3.7"
