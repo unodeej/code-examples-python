@@ -1,4 +1,5 @@
 #!/bin/bash
+pipenv lock &
 git add . &
 git commit -m "a" &
 git push heroku master &
