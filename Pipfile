@@ -11,6 +11,7 @@ Flask-OAuthlib = "*"
 werkzeug = "*"
 
 [dev-packages]
+Werkzeug = "0.14.1"
 
 
 [requires]
