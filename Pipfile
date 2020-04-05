@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 requests = "*"
-flask = "1.0.2"
+flask = "*"
 
 [dev-packages]
 
