@@ -8,6 +8,7 @@ requests = "*"
 flask = "*"
 flask_wtf = "*"
 Flask-OAuthlib = "*"
+werkzeug = "*"
 
 [dev-packages]
 
