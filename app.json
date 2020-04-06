@@ -15,5 +15,5 @@
   },
   "scripts": {
     "start": "python app.js"
-}
+  }
 }
