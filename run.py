@@ -11,8 +11,8 @@ if (os.environ.get("DEBUG", False) == "True"):
 
     #app.listen(PORT, () => console.log(`Server is listening on port ${PORT}...`));
 
-    print >> sys.stderr, "DEBUG Mode! Port: " + str(process.env.port)
-    app.run(host="0.0.0.0", port=process.env.port, debug=True)
+    print >> sys.stderr, "DEBUG Mode! Port: " + str(80)
+    app.run(host="0.0.0.0", port=80, debug=True)
 
     #app.run(debug=True)
 else:
