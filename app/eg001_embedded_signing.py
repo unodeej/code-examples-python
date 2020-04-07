@@ -52,6 +52,7 @@ def create_controller():
         # Strip anything other than characters listed
         pattern = re.compile("([^\w \-\@\.\,])+")
 
+
         last_name    = pattern.sub("", request.form.get("last_name"))
         first_name   = pattern.sub("", request.form.get("first_name"))
         middle_initial = pattern.sub("", request.form.get("middle_initial"))
@@ -303,22 +304,21 @@ def make_envelope(args):
     )
 
     INPUT_DATA = [
-        ["text", args["signer_name"] ],
-        ["text", args["signer_name"] ],
-        ["text", args["signer_age"] ],
-        ["radio", args["signer_age"] ],
-        ["text", args["signer_age"] ],
-        ["text", args["signer_age"] ],
-        ["text", args["signer_age"] ],
-        ["text", args["signer_age"] ],
-        ["text", args["signer_age"] ],
-        ["text", args["signer_age"] ],
-        ["text", args["signer_email"] ],
-        ["text", args["signer_age"] ],
-        ["text", args["signer_age"] ],
-        ["text", args["signer_age"] ],
-        ["radio", args["signer_age"] ],
-        ["text", args["signer_age"] ]
+        ["text", args["last_name"] ],
+        ["text", args["first_name"] ],
+        ["text", args["middle_initial"] ],
+        ["radio", args["gender"] ],
+        ["text", args["mailing_address"] ],
+        ["text", args["city"] ],
+        ["text", args["state"] ],
+        ["text", args["zip"] ],
+        ["text", args["county"] ],
+        ["text", args["home_tel"] ],
+        ["text", args["email"] ],
+        ["text", args["dob"] ],
+        ["text", args["ssn"] ],
+        ["text", args["req_start_date"] ],
+        ["radio", args["pref_lang"] ],
     ]
 
     # INPUT_DATA = [
