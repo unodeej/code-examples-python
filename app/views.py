@@ -33,14 +33,14 @@ def ds_must_authenticate():
 def eg001():
     # This needs to be executed here, so that the auth process can be carried out
     return eg001_embedded_signing.controller()
-    if request.method == 'POST':
-        return #redirect(eg001_embedded_signing.controller(request.form), code=302)
-    else:
-        form = ClientForm()
-
-        if form.validate() == False:
-            flash:('All fields are required.')
-        return render_template('form.html', form = form)
+    # if request.method == 'POST':
+    #     return #redirect(eg001_embedded_signing.controller(request.form), code=302)
+    # else:
+    #     form = ClientForm()
+    #
+    #     if form.validate() == False:
+    #         flash:('All fields are required.')
+    #     return render_template('form.html', form = form)
 
 @app.route('/submit', methods=('GET', 'POST'))
 def submit():

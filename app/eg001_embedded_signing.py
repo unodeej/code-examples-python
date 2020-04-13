@@ -26,10 +26,10 @@ def controller():
     if request.method == "GET":
         return get_controller()
     elif request.method == "POST":
-        form = ClientForm()
-
-        if form.validate() == False:
-            flash:('All fields are required.')
+        # form = ClientForm()
+        #
+        # if form.validate() == False:
+        #     flash:('All fields are required.')
         return render_template('form.html', form = form)
     else:
         return render_template("404.html"), 404
@@ -361,15 +361,20 @@ def get_controller():
     """responds with the form for the example"""
 
     if views.ds_token_ok():
-        return render_template("eg001_embedded_signing.html",
-                               title="Embedded Signing Ceremony",
-                               source_file=path.basename(__file__),
-                               source_url=ds_config.DS_CONFIG["github_example_url"] + path.basename(__file__),
-                               documentation=ds_config.DS_CONFIG["documentation"] + eg,
-                               show_doc=ds_config.DS_CONFIG["documentation"],
-                               signer_name=ds_config.DS_CONFIG["signer_name"],
-                               signer_email=ds_config.DS_CONFIG["signer_email"]
-        )
+        form = ClientForm()
+
+        if form.validate() == False:
+            flash:('All fields are required.')
+        return render_template('form.html', form = form)
+        # return render_template("eg001_embedded_signing.html",
+        #                        title="Embedded Signing Ceremony",
+        #                        source_file=path.basename(__file__),
+        #                        source_url=ds_config.DS_CONFIG["github_example_url"] + path.basename(__file__),
+        #                        documentation=ds_config.DS_CONFIG["documentation"] + eg,
+        #                        show_doc=ds_config.DS_CONFIG["documentation"],
+        #                        signer_name=ds_config.DS_CONFIG["signer_name"],
+        #                        signer_email=ds_config.DS_CONFIG["signer_email"]
+        # )
     else:
         # Save the current operation so it will be resumed after authentication
         session["eg"] = url_for(eg)
