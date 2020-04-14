@@ -183,6 +183,31 @@ def worker(args):
     print ("MYURL" + results.url)
     return {"envelope_id": envelope_id, "redirect_url": results.url}
 
+# This function is an alternative to setup_tabs(), which gets the form fields
+# automatically from their Adobe names
+def get_form_fields(args):
+    tabsObj = {
+        "compositeTemplates": [{
+            "inlineTemplates": [{
+                "sequence": "1",
+                "recipients": {
+                    "signers": [{
+                        "email": "john@email.com",
+                        "name": "Jon Dough",
+                        "recipientId": "1",
+                        "defaultRecipient": "true"
+                    }]
+                }
+            }],
+            "document": {
+                "documentId": "1",
+                "name": "irs_f4506t.pdf",
+                "documentBase64": "base64 encoded string",
+                "transformPdfFields": "true"
+            }
+        }]
+    }
+    return tabsObj
 
 # Author: DJ Uno
 # This function sets up the signature and text field tabs for the document.
@@ -292,7 +317,10 @@ def make_envelope(args):
         document_base64 = base64_file_content,
         name = "Example document", # can be different from actual file name
         file_extension = "pdf", # many different document types are accepted
-        document_id = 1 # a label used to reference the doc
+        document_id = 1, # a label used to reference the doc
+
+        # SET THIS TO TRUE IF PDF HAS ADOBE FIELD NAMES!
+        transform_pdf_fields = True
     )
 
     # Create the signer recipient model
@@ -342,7 +370,8 @@ def make_envelope(args):
 
     # Add the tabs model (including the sign_here tab) to the signer
     # The Tabs object wants arrays of the different field/tab types
-    signer.tabs = setup_tabs(INPUT_DATA)
+    #signer.tabs = setup_tabs(INPUT_DATA)
+    signer.tabs = get_form_fields(INPUT_DATA)
 
     # Next, create the top level envelope definition and populate it.
     envelope_definition = EnvelopeDefinition(
