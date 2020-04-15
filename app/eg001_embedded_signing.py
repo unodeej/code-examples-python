@@ -25,12 +25,12 @@ def controller():
     """Controller router using the HTTP method"""
     if request.method == "GET":
         return get_controller()
-    elif request.method == "POST":
-        # form = ClientForm()
-        #
-        # if form.validate() == False:
-        #     flash:('All fields are required.')
-        return render_template('form.html', form = form)
+    # elif request.method == "POST":
+    #     form = ClientForm()
+    #
+    #     if form.validate() == False:
+    #         flash:('All fields are required.')
+    #     return render_template('form.html', form = form)
     else:
         return render_template("404.html"), 404
 
@@ -45,61 +45,61 @@ def create_controller():
     print("FORM DATA: " + str(request.form))
 
 
-    minimum_buffer_min = 3
+    minimum_buffer_min = 240     # four hours
     if views.ds_token_ok(minimum_buffer_min):
         # 2. Call the worker method
         # More data validation would be a good idea here
         # Strip anything other than characters listed
         pattern = re.compile("([^\w \-\@\.\,])+")
 
-
+        # pull values from the HTML form
         last_name    = pattern.sub("", request.form.get("last_name"))
         first_name   = pattern.sub("", request.form.get("first_name"))
-        middle_initial = pattern.sub("", request.form.get("middle_initial"))
-
-        gender       = pattern.sub("", request.form.get("gender"))
-
-        mailing_address = pattern.sub("", request.form.get("mailing_address"))
-        city         = pattern.sub("", request.form.get("city"))
-        state        = pattern.sub("", request.form.get("state"))
-        zip          = pattern.sub("", request.form.get("zip"))
-        county       = pattern.sub("", request.form.get("county"))
-
-        home_tel     = pattern.sub("", request.form.get("home_tel"))
+        # middle_initial = pattern.sub("", request.form.get("middle_initial"))
+        #
+        # gender       = pattern.sub("", request.form.get("gender"))
+        #
+        # mailing_address = pattern.sub("", request.form.get("mailing_address"))
+        # city         = pattern.sub("", request.form.get("city"))
+        # state        = pattern.sub("", request.form.get("state"))
+        # zip          = pattern.sub("", request.form.get("zip"))
+        # county       = pattern.sub("", request.form.get("county"))
+        #
+        # home_tel     = pattern.sub("", request.form.get("home_tel"))
         email        = pattern.sub("", request.form.get("email"))
-
-        dob          = pattern.sub("", request.form.get("dob"))
-        ssn          = pattern.sub("", request.form.get("ssn"))
-
-        req_start_date = pattern.sub("", request.form.get("req_start_date"))
-        pref_lang    = pattern.sub("", request.form.get("pref_lang"))
+        #
+        # dob          = pattern.sub("", request.form.get("dob"))
+        # ssn          = pattern.sub("", request.form.get("ssn"))
+        #
+        # req_start_date = pattern.sub("", request.form.get("req_start_date"))
+        # pref_lang    = pattern.sub("", request.form.get("pref_lang"))
 
         envelope_args = {
             "signer_email": email,
             "signer_name": first_name + " " + last_name,
             "signer_client_id": signer_client_id,
-
-            "last_name": last_name,
-            "first_name": first_name,
-            "middle_initial": middle_initial,
-
-            "gender": gender,
-
-            "mailing_address": mailing_address,
-            "city": city,
-            "state": state,
-            "zip": zip,
-            "county": county,
-
-            "home_tel": home_tel,
-            "email": email,
-
-            "dob": dob,
-            "ssn": ssn,
-
-            "req_start_date": req_start_date,
-            "pref_lang": pref_lang,
-
+            #
+            # "last_name": last_name,
+            # "first_name": first_name,
+            # "middle_initial": middle_initial,
+            #
+            # "gender": gender,
+            #
+            # "mailing_address": mailing_address,
+            # "city": city,
+            # "state": state,
+            # "zip": zip,
+            # "county": county,
+            #
+            # "home_tel": home_tel,
+            # "email": email,
+            #
+            # "dob": dob,
+            # "ssn": ssn,
+            #
+            # "req_start_date": req_start_date,
+            # "pref_lang": pref_lang,
+            #
             "ds_return_url": url_for("ds_return", _external=True)
         }
         args = {
@@ -183,35 +183,10 @@ def worker(args):
     print ("MYURL" + results.url)
     return {"envelope_id": envelope_id, "redirect_url": results.url}
 
-# This function is an alternative to setup_tabs(), which gets the form fields
-# automatically from their Adobe names
-def get_form_fields(args):
-    tabsObj = {
-        "compositeTemplates": [{
-            "inlineTemplates": [{
-                "sequence": "1",
-                "recipients": {
-                    "signers": [{
-                        "email": "john@email.com",
-                        "name": "Jon Dough",
-                        "recipientId": "1",
-                        "defaultRecipient": "true"
-                    }]
-                }
-            }],
-            "document": {
-                "documentId": "1",
-                "name": "irs_f4506t.pdf",
-                "documentBase64": "base64 encoded string",
-                "transformPdfFields": "true"
-            }
-        }]
-    }
-    return tabsObj
 
 # Author: DJ Uno
 # This function sets up the signature and text field tabs for the document.
-def setup_tabs(args):
+def setup_tabs(existingTabs, args):
     # Set the values for the fields in the template
 
     anchor_strings = ["Last name:",
@@ -244,7 +219,7 @@ def setup_tabs(args):
                     anchor_string = anchor_strings[i], anchor_x_offset = 0, anchor_y_offset = 0.1, anchor_units = "inches",
                     anchor_case_sensitive = True,
                     font = "helvetica", font_size = "size14",
-                    tab_label = "added text field", height = "23",
+                    tab_label = "First Name", height = "23",
                     width = "84", required = "false",
                     value = args[i][1],
                     locked = "true", tab_id = "name")
@@ -308,7 +283,12 @@ def make_envelope(args):
     #
     # The envelope has one recipient.
     # recipient 1 - signer
-    with open(path.join(demo_docs_path, ds_config.DS_CONFIG["doc_pdf"]), "rb") as file:
+
+    # Select PDF to display here
+    file_name = ds_config.DS_CONFIG["doc_pdf"]
+    #
+
+    with open(path.join(demo_docs_path, file_name), "rb") as file:
         content_bytes = file.read()
     base64_file_content = base64.b64encode(content_bytes).decode("ascii")
 
@@ -331,23 +311,23 @@ def make_envelope(args):
         client_user_id = args["signer_client_id"]
     )
 
-    INPUT_DATA = [
-        ["text", args["last_name"] ],
-        ["text", args["first_name"] ],
-        ["text", args["middle_initial"] ],
-        ["radio", args["gender"] ],
-        ["text", args["mailing_address"] ],
-        ["text", args["city"] ],
-        ["text", args["state"] ],
-        ["text", args["zip"] ],
-        ["text", args["county"] ],
-        ["text", args["home_tel"] ],
-        ["text", args["email"] ],
-        ["text", args["dob"] ],
-        ["text", args["ssn"] ],
-        ["text", args["req_start_date"] ],
-        ["radio", args["pref_lang"] ],
-    ]
+    # INPUT_DATA = [
+    #     ["text", args["last_name"] ],
+    #     ["text", args["first_name"] ],
+    #     ["text", args["middle_initial"] ],
+    #     ["radio", args["gender"] ],
+    #     ["text", args["mailing_address"] ],
+    #     ["text", args["city"] ],
+    #     ["text", args["state"] ],
+    #     ["text", args["zip"] ],
+    #     ["text", args["county"] ],
+    #     ["text", args["home_tel"] ],
+    #     ["text", args["email"] ],
+    #     ["text", args["dob"] ],
+    #     ["text", args["ssn"] ],
+    #     ["text", args["req_start_date"] ],
+    #     ["radio", args["pref_lang"] ],
+    # ]
 
     # INPUT_DATA = [
     #     ["text", args["signer_name"] ],
@@ -370,8 +350,7 @@ def make_envelope(args):
 
     # Add the tabs model (including the sign_here tab) to the signer
     # The Tabs object wants arrays of the different field/tab types
-    #signer.tabs = setup_tabs(INPUT_DATA)
-    signer.tabs = get_form_fields(INPUT_DATA)
+    #signer.tabs = setup_tabs(signer.tabs, INPUT_DATA)
 
     # Next, create the top level envelope definition and populate it.
     envelope_definition = EnvelopeDefinition(

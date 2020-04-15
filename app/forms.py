@@ -1,33 +1,56 @@
 from flask_wtf import Form
-from wtforms import TextField, IntegerField, TextAreaField, SubmitField, RadioField, SelectField
+from wtforms import TextField, IntegerField, BooleanField, TextAreaField, SubmitField, RadioField, SelectField, SelectMultipleField
 from wtforms import validators, ValidationError
 
 class ClientForm(Form):
-   last_name = TextField("Last Name ",[validators.Required("Please enter your last name.")])
-   first_name = TextField("First Name ",[validators.Required("Please enter your first name.")])
+    title = RadioField('Title', choices = [('Mr','Mr'),('Ms','Ms'),('Mrs','Mrs')])
+    first_name = TextField("First Name ",[validators.Required("Please enter your first name.")])
+    middle_initial = TextField("Middle Initial ")
+    last_name = TextField("Last Name ",[validators.Required("Please enter your last name.")])
 
-   middle_initial = TextField("Middle Initial ")
+    home_address = TextField("Home Address")
+    city = TextField("City")
+    state = TextField("State")
+    zip = TextField("Zip Code")
 
-   gender = RadioField('Gender', choices = [('M','Male'),('F','Female')])
+    diff_mail_addr = BooleanField('Different mailing address?')
 
-   mailing_address = TextField("Address")
-   city = TextField("City")
-   state = TextField("State")
-   zip = TextField("Zip")
-   county = TextField("County")
+    mailing_address = TextField("Mailing Address")
+    mailing_city = TextField("City")
+    mailing_state = TextField("State")
+    mailing_zip = TextField("Zip Code")
 
-   home_tel = TextField("Home Phone ")
+    home_tel = TextField("Phone Number")
 
-   email = TextField("Email",[validators.Required("Please enter your email address."),
-   validators.Email("Please enter your email address.")])
+    email = TextField("Email",[validators.Required("Please enter your email address."),
+    validators.Email("Please enter your email address.")])
 
-   dob = TextField("Date of Birth ")
-   ssn = TextField("Social Security Number ")
+    dob = TextField("Date of Birth ")
+    aarp = TextField("AARP Membership # (Only required if you are enrolling in a AARP Medicare Supplement plan)")
 
-   req_start_date = TextField("Requested start date")
-   pref_lang = RadioField('Preferred Language', choices = [('E','English'),('O','Other')])
+    add_coverage = SelectMultipleField("Would you like to add additional coverage if not already included in your plan?", choices = [('Dental', 'Dental Coverage'), ('Vision', 'Vision Coverage'), ('More', "I'd like to learn more")] )
 
-   # Age = IntegerField("Age")
-   # language = SelectField('Programming Languages', choices = [('java', 'Java'),('py', 'Python')])
+    claim_num = TextField("Medicare Claim Number")
+    hospital_month = SelectField("Month", choices = [('Jan','January'),('Feb','February'),('Mar','March'),
+                                                     ('Apr','April'),('May','May'),('Jun','June'),
+                                                     ('Jul','July'),('Aug','August'),('Sep','September'),
+                                                     ('Oct','October'),('Nov','November'),('Dec','December'), ] )
+    hospital_year = SelectField("Year", choices = [('2020','2020'),('2019','2019'),('2018','2018'),
+                                                     ('2017','2017'),('2016','2016'),('2015','2015'),
+                                                     ('2014','2014'),('2013','2013'),('2012','2012'),
+                                                     ('2011','2011'),('2010','2010'),('2009','2009'),
+                                                     ('2008','2008'),('2007','2007'),('2006','2006'),
+                                                     ('2005','2005') ] )
 
-   submit = SubmitField("Submit")
+    medical_month = SelectField("Month", choices = [('Jan','January'),('Feb','February'),('Mar','March'),
+                                                     ('Apr','April'),('May','May'),('Jun','June'),
+                                                     ('Jul','July'),('Aug','August'),('Sep','September'),
+                                                     ('Oct','October'),('Nov','November'),('Dec','December'), ] )
+    medical_year = SelectField("Year", choices = [('2020','2020'),('2019','2019'),('2018','2018'),
+                                                     ('2017','2017'),('2016','2016'),('2015','2015'),
+                                                     ('2014','2014'),('2013','2013'),('2012','2012'),
+                                                     ('2011','2011'),('2010','2010'),('2009','2009'),
+                                                     ('2008','2008'),('2007','2007'),('2006','2006'),
+                                                     ('2005','2005') ] )
+
+    submit = SubmitField("Submit")
