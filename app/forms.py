@@ -53,4 +53,16 @@ class ClientForm(Form):
                                                      ('2008','2008'),('2007','2007'),('2006','2006'),
                                                      ('2005','2005') ] )
 
+
+    plan_type = SelectField("Type of plan", choices = [('None','None'),('Emp','Employer Group Plan'),('Ind','Individual Plan'),
+                                                       ('Uni','Union Plan'),('Oth','Other') ] )
+    ins_company = TextField("Health insurance company")
+    policy_id = TextField("Health insurance policy ID #")
+    ins_start_date = TextField("Health insurance start date (Best estimation if you can't find it)")
+    ins_end_date = TextField("Health insurance end date (leave blank if your health insurance is still active)")
+
+    pref_payment = SelectField("How would you prefer to pay?", choices = [('Mon','Monthly billing by the health insurance company'),
+                                                                          ('Soc','Social Security check deduction (Not for Medicare Supplement Plans)'),
+                                                                          ('Dir','Direct Debit') ] )
+
     submit = SubmitField("Submit")

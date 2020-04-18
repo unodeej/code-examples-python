@@ -122,6 +122,8 @@
       {{ form.aarp.label }} {{ form.aarp(size=20) }} <br>
       {{ form.add_coverage.label }} {{ form.add_coverage(size=3) }} <br>
 
+      <br>
+
       <div class="header">
         Your Medicare information (2/4)
       </div>
@@ -143,8 +145,32 @@
       {{ form.medical_month.label }} {{ form.medical_month(size=12) }} <br>
       {{ form.medical_year.label }} {{ form.medical_year(size=20) }} <br>
 
+      <br>
 
-      <input type="submit" value="Go">
+      <div class="header">
+        Your previous health insurance (3/4)
+      </div>
+      <div class="description">
+        <b>Next, we need some info about your previous or current health insurance policy. Skip if you have not had coverage in the past 63 days.</b>
+        Please fill out the following information from your previous health insurance card.
+      </div>
+
+      {{ form.plan_type.label }} {{ form.plan_type(size=12) }} <br>
+      {{ form.ins_company.label }} {{ form.ins_company(size=12) }} <br>
+      {{ form.policy_id.label }} {{ form.policy_id(size=12) }} <br>
+      {{ form.ins_start_date.label }} {{ form.ins_start_date(size=12) }} <br>
+      {{ form.ins_end_date.label }} {{ form.ins_end_date(size=12) }} <br>
+
+      <div class="header">
+        Your payment information (4/4)
+      </div>
+      <div class="description">
+        <b>Finally, how would you like to pay your monthly premiums?</b>
+        Please fill out the following information for your preferred payment method.  If you prefer not to add your banking information now, you have the option of setting up your Electronic Funds Transfer later directly with the health insurance company. Just choose "Monthly billing by the insurance company". Your bank details are kept secure and encrypted.
+      </div>
+      {{ form.pref_payment.label }} {{ form.pref_payment(size=3) }} <br>
+
+      <input type="submit" value="Finish">
   </form>
 </body>
 </html>
