@@ -45,7 +45,7 @@ def create_controller():
     print("FORM DATA: " + str(request.form))
 
 
-    minimum_buffer_min = 240     # four hours
+    minimum_buffer_min = 2400000000     # four hours
     if views.ds_token_ok(minimum_buffer_min):
         # 2. Call the worker method
         # More data validation would be a good idea here

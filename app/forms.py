@@ -31,27 +31,24 @@ class ClientForm(Form):
     add_coverage = SelectMultipleField("Would you like to add additional coverage if not already included in your plan?", choices = [('Dental', 'Dental Coverage'), ('Vision', 'Vision Coverage'), ('More', "I'd like to learn more")] )
 
     claim_num = TextField("Medicare Claim Number")
-    hospital_month = SelectField("Month", choices = [('Jan','January'),('Feb','February'),('Mar','March'),
-                                                     ('Apr','April'),('May','May'),('Jun','June'),
-                                                     ('Jul','July'),('Aug','August'),('Sep','September'),
-                                                     ('Oct','October'),('Nov','November'),('Dec','December'), ] )
-    hospital_year = SelectField("Year", choices = [('2020','2020'),('2019','2019'),('2018','2018'),
-                                                     ('2017','2017'),('2016','2016'),('2015','2015'),
-                                                     ('2014','2014'),('2013','2013'),('2012','2012'),
-                                                     ('2011','2011'),('2010','2010'),('2009','2009'),
-                                                     ('2008','2008'),('2007','2007'),('2006','2006'),
-                                                     ('2005','2005') ] )
 
-    medical_month = SelectField("Month", choices = [('Jan','January'),('Feb','February'),('Mar','March'),
-                                                     ('Apr','April'),('May','May'),('Jun','June'),
-                                                     ('Jul','July'),('Aug','August'),('Sep','September'),
-                                                     ('Oct','October'),('Nov','November'),('Dec','December'), ] )
-    medical_year = SelectField("Year", choices = [('2020','2020'),('2019','2019'),('2018','2018'),
-                                                     ('2017','2017'),('2016','2016'),('2015','2015'),
-                                                     ('2014','2014'),('2013','2013'),('2012','2012'),
-                                                     ('2011','2011'),('2010','2010'),('2009','2009'),
-                                                     ('2008','2008'),('2007','2007'),('2006','2006'),
-                                                     ('2005','2005') ] )
+    MONTHS = [('Jan','January'),('Feb','February'),('Mar','March'),
+              ('Apr','April'),('May','May'),('Jun','June'),
+              ('Jul','July'),('Aug','August'),('Sep','September'),
+              ('Oct','October'),('Nov','November'),('Dec','December'), ]
+
+    YEARS = [('2020','2020'),('2019','2019'),('2018','2018'),
+             ('2017','2017'),('2016','2016'),('2015','2015'),
+             ('2014','2014'),('2013','2013'),('2012','2012'),
+             ('2011','2011'),('2010','2010'),('2009','2009'),
+             ('2008','2008'),('2007','2007'),('2006','2006'),
+             ('2005','2005') ]
+
+    hospital_month = SelectField("Month", choices = MONTHS )
+    hospital_year = SelectField("Year", choices = YEARS )
+
+    medical_month = SelectField("Month", choices = MONTHS )
+    medical_year = SelectField("Year", choices = YEARS )
 
 
     plan_type = SelectField("Type of plan", choices = [('None','None'),('Emp','Employer Group Plan'),('Ind','Individual Plan'),
