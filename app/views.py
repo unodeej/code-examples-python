@@ -17,6 +17,8 @@ import uuid
 from app import app, ds_config, eg001_embedded_signing
 from time import time
 import pickle
+import os.path
+from os import path
 
 class MyForm(FlaskForm):
     name = StringField('name', validators=[DataRequired()])
@@ -106,9 +108,9 @@ def ds_token_ok(buffer_min=60):
     :param buffer_min: buffer time needed in minutes
     :return: true iff the user has an access token that will be good for another buffer min
     """
-    buffer_min = 0
+    #buffer_min = 0
     ok = "ds_access_token" in session and "ds_expiration" in session
-    ok = ok and (session["ds_expiration"] - timedelta(minutes=buffer_min)) > datetime.utcnow()
+    #ok = ok and (session["ds_expiration"] - timedelta(minutes=buffer_min)) > datetime.utcnow()
     return ok
 
 # This function is passed into the app so that it automatically refreshes the token
@@ -144,9 +146,12 @@ oauth.register(
     client_kwargs={
         'scope': 'signature',
         'refresh_token_url': ds_config.DS_CONFIG["authorization_server"] + "/oauth/token"
+        # "state": lambda: uuid.uuid4().hex.upper(),
+        # 'code': "abcdef"
         },
     )
 
+# Create the remote app
 docusign = oauth.docusign
 # request_token_params = {"scope": "signature",
 #                         "state": lambda: uuid.uuid4().hex.upper()}
@@ -179,11 +184,10 @@ def ds_login():
             #return docusign.authorize(callback=url_for("ds_callback", _external=True))
 
         # if we have a valid ACCESS token, but it has expired, use the REFRESH token to generate a new access token
-        elif "ds_refresh_token" in session:
-            print("CAN REFRESH!!!")
-            print(session)
+        else:
+            print("CAN REFRESH!!! (token is expired, but we can auto-refresh it)") # Not sure how it's autorefreshing though! Our two methods aren't firing their comments.
 
-
+            return redirect(url_for("ds_callback"))
 
             # token = docusign.refresh_token( ds_config.DS_CONFIG["authorization_server"] + "/oauth/token", session["ds_refresh_token"] )
             # #
@@ -196,7 +200,7 @@ def ds_login():
             # response = docusign.get(url, headers=auth).json()
 
 
-            return redirect(url_for("ds_callback"))
+
             #return redirect(url_for("eg001", _external=True))
             #return docusign.authorize_redirect(url_for("ds_callback", _external=True) )
 
@@ -258,22 +262,19 @@ def ds_login():
             # session["ds_access_token"] = ds.refresh_token(ds_config.DS_CONFIG["authorization_server"] + "/oauth/token", **extra)
             # return jsonify(session['oauth_token'])
 
-
-
-        # if for some reason, our access token has expired but we're missing a refresh token
-        else:
-            print("ERROR: Refresh token not found")
-            return docusign.authorize_redirect(url_for("ds_callback", _external=True) )    #make the user log in manually
-
     # if the access token isn't present, it means we've never logged in before
     else:
         # perform first-time login
-        print("First Time Login!")
-        return docusign.authorize_redirect(url_for("ds_callback", _external=True) )
+        print("First Time Login! (session is empty, autogenerating token from file)")
+
+        #return docusign.authorize_redirect(url_for("ds_callback", _external=True) )
+
+        return redirect(url_for("ds_callback", _external=True))
+        #return docusign.authorize_redirect(url_for("ds_callback", _external=True) )
 
 
 
-
+# Called when we press the log out button at the top of the page
 @app.route("/ds/logout")
 def ds_logout():
     ds_logout_internal()
@@ -305,38 +306,65 @@ def ds_callback():
     # Save the redirect eg if present
     redirect_url = session.pop("eg", None)
 
-    if "ds_refresh_token" in session:
+    # Load the token from one we have stored in file
+    if path.isfile('stored_token'):
+        # Load the stored token from
         print("LOADING STORED TOKEN FILE")
         with open('stored_token', 'rb') as stored_token_file:
             token = pickle.load(stored_token_file)
-
-        docusign.token = token
-
-        #oauth.update_token("docusign", token)
-        ds_logout_internal()
-        give_token_to_sesssion(token)
-
-        # url = ds_config.DS_CONFIG["authorization_server"] + "/oauth/userinfo"
-        #
-        # auth = {"Authorization": "Bearer " + session["ds_access_token"]}
-        #
-        # response = docusign.get(url, headers=auth).json()
-
     else:
-        # reset the session
-        ds_logout_internal()
+        print("ERROR: file 'stored_token' not found. Redirecting to authentication to generate a new one.")
+        #Get the access token, refresh token, and expiration, via inputting login credentials
+        if docusign.token:
+            token = docusign.token
+        else:
+            return docusign.authorize_redirect(url_for("ds_callback", _external=True) )
+        # token = oauth.docusign.authorize_access_token()   # For some reason this doesn't work
 
-
-        # Get the access token, refresh token, and expiration
-        token = oauth.docusign.authorize_access_token()
-
+        # Write the new token to file
         with open('stored_token', 'wb') as stored_token_file:
             pickle.dump(token, stored_token_file)
 
-        give_token_to_sesssion(token)
+    # CRUCIAL!!! This step lets the remote_app know that we have a new token
+    docusign.token = token
+
+    # Clear the session, and fill in the new session vars
+    ds_logout_internal()
+    give_token_to_sesssion(token)
 
 
+    # if "ds_refresh_token" in session:
+    #     print("LOADING STORED TOKEN FILE")
+    #     with open('stored_token', 'rb') as stored_token_file:
+    #         token = pickle.load(stored_token_file)
+    #
+    #     docusign.token = token
+    #
+    #     #oauth.update_token("docusign", token)
+    #     ds_logout_internal()
+    #     give_token_to_sesssion(token)
+    #
+    #     # url = ds_config.DS_CONFIG["authorization_server"] + "/oauth/userinfo"
+    #     #
+    #     # auth = {"Authorization": "Bearer " + session["ds_access_token"]}
+    #     #
+    #     # response = docusign.get(url, headers=auth).json()
+    #
+    # else:
+    #     # reset the session
+    #     ds_logout_internal()
+    #
+    #
+    #     # Get the access token, refresh token, and expiration
+    #     token = oauth.docusign.authorize_access_token()
+    #
+    #     with open('stored_token', 'wb') as stored_token_file:
+    #         pickle.dump(token, stored_token_file)
+    #
+    #     give_token_to_sesssion(token)
 
+
+    # Redirect to the form page
     if not redirect_url:
         redirect_url = url_for("index")
     return redirect(url_for("eg001"))
@@ -355,16 +383,18 @@ def ds_callback():
     # session["ds_expiration"] = datetime.utcnow() + timedelta(seconds=resp["expires_in"])
 
 
+# Pass in a token to the session, and fill in all the session values with info from the token
+# Also gets user info from the remote app (name, email, etc.) and passes it to the session
 def give_token_to_sesssion(token):
-    print("TOKEN:")
+    print("give_token_to_sesssion(): TOKEN:")
     print(token)
-    print(datetime.utcnow())
+    # print(datetime.utcnow())
 
-    token['expires_in'] = datetime.utcnow() + timedelta(seconds=3)
+    token['expires_in'] = 5
 
     session["ds_access_token"] = token['access_token']
     session["ds_refresh_token"] = token['refresh_token']
-    session["ds_expiration"] = token['expires_in']
+    session["ds_expiration"] = token['expires_at']
 
     # Get the user info
     url = ds_config.DS_CONFIG["authorization_server"] + "/oauth/userinfo"
@@ -392,8 +422,6 @@ def give_token_to_sesssion(token):
         if not account:
             # Panic! Every user should always have a default account
             raise Exception("No default account")
-
-
 
     # Save the account information
     session["ds_account_id"] = account["account_id"]
