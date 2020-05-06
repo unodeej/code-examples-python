@@ -3,7 +3,7 @@
 from flask import render_template, url_for, redirect, session, flash, request, render_template
 #from flask_oauthlib.client import OAuth
 #from flask.json import jsonify
-from authlib.integrations.flask_client import OAuth
+from authlib.integrations.flask_client import OAuth, token_update
 
 from flask_wtf import FlaskForm
 from wtforms import StringField
@@ -16,6 +16,7 @@ import requests
 import uuid
 from app import app, ds_config, eg001_embedded_signing
 from time import time
+import pickle
 
 class MyForm(FlaskForm):
     name = StringField('name', validators=[DataRequired()])
@@ -84,7 +85,21 @@ def ds_return():
 #
 # OAuth support for DocuSign
 #
+@token_update.connect_via(app)
+def on_token_update(sender, name, token, refresh_token=None, access_token=None):
+    print("~~BLINKER: AUTO TOKEN UPDATE!~~")
+    if refresh_token:
+        item = OAuth2Token.find(name=name, refresh_token=refresh_token)
+    elif access_token:
+        item = OAuth2Token.find(name=name, access_token=access_token)
+    else:
+        return
 
+    # update old token
+    item.access_token = token['access_token']
+    item.refresh_token = token.get('refresh_token')
+    item.expires_at = token['expires_at']
+    item.save()
 
 def ds_token_ok(buffer_min=60):
     """
@@ -115,7 +130,7 @@ def update_token(name, token, refresh_token=None, access_token=None):
 base_uri_suffix = "/restapi"
 
 # Register the docusign OAuth remote app
-oauth = OAuth(app, update_token = update_token)
+oauth = OAuth(app, update_token=update_token)
 
 oauth.register(
     name='docusign',
@@ -126,8 +141,10 @@ oauth.register(
     authorize_url=ds_config.DS_CONFIG["authorization_server"] + "/oauth/auth",
     authorize_params=None,
     api_base_url=None,
-    client_kwargs={'scope': 'signature',
-                   "state": lambda: uuid.uuid4().hex.upper()},
+    client_kwargs={
+        'scope': 'signature',
+        'refresh_token_url': ds_config.DS_CONFIG["authorization_server"] + "/oauth/token"
+        },
     )
 
 docusign = oauth.docusign
@@ -167,7 +184,21 @@ def ds_login():
             print(session)
 
 
-            return docusign.authorize_redirect(url_for("ds_callback", _external=True) )
+
+            # token = docusign.refresh_token( ds_config.DS_CONFIG["authorization_server"] + "/oauth/token", session["ds_refresh_token"] )
+            # #
+            # give_token_to_sesssion(token)
+
+            # url = ds_config.DS_CONFIG["authorization_server"] + "/oauth/userinfo"
+            #
+            # auth = {"Authorization": "Bearer " + session["ds_access_token"]}
+            #
+            # response = docusign.get(url, headers=auth).json()
+
+
+            return redirect(url_for("ds_callback"))
+            #return redirect(url_for("eg001", _external=True))
+            #return docusign.authorize_redirect(url_for("ds_callback", _external=True) )
 
             # returns an OAuthResponse object
             # Parameters:
@@ -273,15 +304,67 @@ def ds_callback():
 
     # Save the redirect eg if present
     redirect_url = session.pop("eg", None)
-    # reset the session
-    ds_logout_internal()
 
-    # Get the access token, refresh token, and expiration
-    token = oauth.docusign.authorize_access_token()
+    if "ds_refresh_token" in session:
+        print("LOADING STORED TOKEN FILE")
+        with open('stored_token', 'rb') as stored_token_file:
+            token = pickle.load(stored_token_file)
+
+        docusign.token = token
+
+        #oauth.update_token("docusign", token)
+        ds_logout_internal()
+        give_token_to_sesssion(token)
+
+        # url = ds_config.DS_CONFIG["authorization_server"] + "/oauth/userinfo"
+        #
+        # auth = {"Authorization": "Bearer " + session["ds_access_token"]}
+        #
+        # response = docusign.get(url, headers=auth).json()
+
+    else:
+        # reset the session
+        ds_logout_internal()
+
+
+        # Get the access token, refresh token, and expiration
+        token = oauth.docusign.authorize_access_token()
+
+        with open('stored_token', 'wb') as stored_token_file:
+            pickle.dump(token, stored_token_file)
+
+        give_token_to_sesssion(token)
+
+
+
+    if not redirect_url:
+        redirect_url = url_for("index")
+    return redirect(url_for("eg001"))
+
+    # resp = docusign.authorized_response()
+    # if resp is None or resp.get("access_token") is None:
+    #     return "Access denied: reason=%s error=%s resp=%s" % (
+    #         request.args["error"],
+    #         request.args["error_description"],
+    #         resp
+    #     )
+    # # app.logger.info("Authenticated with DocuSign.")
+    # flash("You have authenticated with DocuSign.")
+    # session["ds_access_token"] = resp["access_token"]
+    # session["ds_refresh_token"] = resp["refresh_token"]
+    # session["ds_expiration"] = datetime.utcnow() + timedelta(seconds=resp["expires_in"])
+
+
+def give_token_to_sesssion(token):
+    print("TOKEN:")
+    print(token)
+    print(datetime.utcnow())
+
+    token['expires_in'] = datetime.utcnow() + timedelta(seconds=3)
 
     session["ds_access_token"] = token['access_token']
     session["ds_refresh_token"] = token['refresh_token']
-    session["ds_expiration"] = datetime.utcnow() + timedelta(seconds=30)#token['expires_in'])
+    session["ds_expiration"] = token['expires_in']
 
     # Get the user info
     url = ds_config.DS_CONFIG["authorization_server"] + "/oauth/userinfo"
@@ -316,55 +399,6 @@ def ds_callback():
     session["ds_account_id"] = account["account_id"]
     session["ds_account_name"] = account["account_name"]
     session["ds_base_path"] = account["base_uri"] + base_uri_suffix
-
-
-    if not redirect_url:
-        redirect_url = url_for("index")
-    return redirect(url_for("eg001"))
-
-    # resp = docusign.authorized_response()
-    # if resp is None or resp.get("access_token") is None:
-    #     return "Access denied: reason=%s error=%s resp=%s" % (
-    #         request.args["error"],
-    #         request.args["error_description"],
-    #         resp
-    #     )
-    # # app.logger.info("Authenticated with DocuSign.")
-    # flash("You have authenticated with DocuSign.")
-    # session["ds_access_token"] = resp["access_token"]
-    # session["ds_refresh_token"] = resp["refresh_token"]
-    # session["ds_expiration"] = datetime.utcnow() + timedelta(seconds=resp["expires_in"])
-    #
-    # # Determine user, account_id, base_url by calling OAuth::getUserInfo
-    # # See https://developers.docusign.com/esign-rest-api/guides/authentication/user-info-endpoints
-    # url = ds_config.DS_CONFIG["authorization_server"] + "/oauth/userinfo"
-    # auth = {"Authorization": "Bearer " + session["ds_access_token"]}
-    # response = requests.get(url, headers=auth).json()
-    # session["ds_user_name"] = response["name"]
-    # session["ds_user_email"] = response["email"]
-    # accounts = response["accounts"]
-    # account = None # the account we want to use
-    # # Find the account...
-    # target_account_id = ds_config.DS_CONFIG["target_account_id"]
-    # if target_account_id:
-    #     account = next( (a for a in accounts if a["account_id"] == target_account_id), None)
-    #     if not account:
-    #         # Panic! The user does not have the targeted account. They should not log in!
-    #         raise Exception("No access to target account")
-    # else: # get the default account
-    #     account = next((a for a in accounts if a["is_default"]), None)
-    #     if not account:
-    #         # Panic! Every user should always have a default account
-    #         raise Exception("No default account")
-    #
-    # # Save the account information
-    # session["ds_account_id"] = account["account_id"]
-    # session["ds_account_name"] = account["account_name"]
-    # session["ds_base_path"] = account["base_uri"] + base_uri_suffix
-
-    # if not redirect_url:
-    #     redirect_url = url_for("index")
-    # return redirect(redirect_url)
 
 ################################################################################
 
