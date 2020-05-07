@@ -23,6 +23,13 @@ from os import path
 class MyForm(FlaskForm):
     name = StringField('name', validators=[DataRequired()])
 
+class OAuth2Token():
+    access_token = ""
+    refresh_token = ""
+    expires_at = ""
+    def save(self):
+        print("saving")
+
 @app.route("/")
 def index():
     return render_template("home.html", title="Home - Python Code Examples")
@@ -87,21 +94,44 @@ def ds_return():
 #
 # OAuth support for DocuSign
 #
-@token_update.connect_via(app)
-def on_token_update(sender, name, token, refresh_token=None, access_token=None):
-    print("~~BLINKER: AUTO TOKEN UPDATE!~~")
-    if refresh_token:
-        item = OAuth2Token.find(name=name, refresh_token=refresh_token)
-    elif access_token:
-        item = OAuth2Token.find(name=name, access_token=access_token)
-    else:
-        return
+# @token_update.connect_via(app)
+# def on_token_update(sender, name, token, refresh_token=None, access_token=None):
+#     print("~~BLINKER: AUTO TOKEN UPDATE!~~")
+#     if refresh_token:
+#         item = OAuth2Token.find(name=name, refresh_token=refresh_token)
+#     elif access_token:
+#         item = OAuth2Token.find(name=name, access_token=access_token)
+#     else:
+#         return
+#
+#     # update old token
+#     item.access_token = token['access_token']
+#     item.refresh_token = token.get('refresh_token')
+#     item.expires_at = token['expires_at']
+#     item.save()
 
+# # This function is passed into the app so that it automatically refreshes the token
+def update_token(name, token, refresh_token=None, access_token=None):
+    print("~~AUTO UPDATING TOKEN~~")
+    # if refresh_token:
+    #     item = OAuth2Token.find(name=name, refresh_token=refresh_token)
+    # elif access_token:
+    #     item = OAuth2Token.find(name=name, access_token=access_token)
+    # else:
+    #     return
+    write_token_to_file(token)
+
+    item = OAuth2Token()
+
+    print("TOKEN SAYS")
+    print(token)
     # update old token
     item.access_token = token['access_token']
     item.refresh_token = token.get('refresh_token')
     item.expires_at = token['expires_at']
     item.save()
+
+
 
 def ds_token_ok(buffer_min=60):
     """
@@ -113,21 +143,10 @@ def ds_token_ok(buffer_min=60):
     #ok = ok and (session["ds_expiration"] - timedelta(minutes=buffer_min)) > datetime.utcnow()
     return ok
 
-# This function is passed into the app so that it automatically refreshes the token
-def update_token(name, token, refresh_token=None, access_token=None):
-    print("~~AUTO UPDATING TOKEN~~")
-    if refresh_token:
-        item = OAuth2Token.find(name=name, refresh_token=refresh_token)
-    elif access_token:
-        item = OAuth2Token.find(name=name, access_token=access_token)
-    else:
-        return
 
-    # update old token
-    item.access_token = token['access_token']
-    item.refresh_token = token.get('refresh_token')
-    item.expires_at = token['expires_at']
-    item.save()
+
+
+
 
 base_uri_suffix = "/restapi"
 
@@ -267,8 +286,6 @@ def ds_login():
         # perform first-time login
         print("First Time Login! (session is empty, autogenerating token from file)")
 
-        #return docusign.authorize_redirect(url_for("ds_callback", _external=True) )
-
         return redirect(url_for("ds_callback", _external=True))
         #return docusign.authorize_redirect(url_for("ds_callback", _external=True) )
 
@@ -297,6 +314,15 @@ def ds_logout_internal():
     session.pop("envelope_documents", None)
     session.pop("template_id", None)
 
+def write_token_to_file(token):
+    # Just for testing
+    token["expires_in"] = 20
+    token["expires_at"] = time() + token["expires_in"]
+
+    # Write the new token to file
+    with open('stored_token', 'wb') as stored_token_file:
+        pickle.dump(token, stored_token_file)
+
 
 @app.route("/ds/callback")
 def ds_callback():
@@ -315,15 +341,14 @@ def ds_callback():
     else:
         print("ERROR: file 'stored_token' not found. Redirecting to authentication to generate a new one.")
         #Get the access token, refresh token, and expiration, via inputting login credentials
-        if docusign.token:
-            token = docusign.token
-        else:
-            return docusign.authorize_redirect(url_for("ds_callback", _external=True) )
-        # token = oauth.docusign.authorize_access_token()   # For some reason this doesn't work
+        # if ds_token_ok():
+        #     token = docusign.token
+        # else:
 
-        # Write the new token to file
-        with open('stored_token', 'wb') as stored_token_file:
-            pickle.dump(token, stored_token_file)
+        #return docusign.authorize_redirect(url_for("ds_callback", _external=True) )
+        token = oauth.docusign.authorize_access_token()   # For some reason this doesn't work
+
+        write_token_to_file(token)
 
     # CRUCIAL!!! This step lets the remote_app know that we have a new token
     docusign.token = token
