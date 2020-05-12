@@ -89,11 +89,15 @@ def ds_return():
     state = request.args.get("state")
     envelope_id = request.args.get("envelopeId")
     return render_template("ds_return.html",
-        title = "Return from DocuSign",
+        title =  "Return from DocuSign",
         event =  event,
         envelope_id = envelope_id,
-        state = state
+        state =  state
     )
+
+@app.route("/download_doc")
+def download_doc():
+    return eg001_embedded_signing.download_doc()
 
 
 ################################################################################

@@ -1,6 +1,6 @@
 """Example 001: Embedded Signing Ceremony"""
 
-from flask import render_template, url_for, redirect, session, flash, request
+from flask import render_template, url_for, redirect, session, flash, request, send_file
 from os import path
 import json
 from app import app, ds_config, views
@@ -27,6 +27,54 @@ class FormEntry():
         self.type = type
         self.name = name
         self.anchor = anchor
+
+def download_doc():
+    """
+    1. Call the envelope get method
+    """
+    # import pdb; pdb.set_trace()
+    args = {
+        "account_id": session["ds_account_id"],
+        "document_id": 1,
+        "envelope_id": session["envelope_id"],
+        "envelope_documents": session["envelope_documents"],
+        "base_path": session["ds_base_path"],
+        "ds_access_token": session["ds_access_token"]
+    }
+
+    # Exceptions will be caught by the calling function
+    api_client = ApiClient()
+    api_client.host = args['base_path']
+    api_client.set_default_header("Authorization", "Bearer " + args['ds_access_token'])
+    envelope_api = EnvelopesApi(api_client)
+    document_id = args['document_id']
+
+    # The SDK always stores the received file as a temp file
+    temp_file = envelope_api.get_document(args['account_id'], document_id, args['envelope_id'])
+    print(args['envelope_documents']['documents'])
+    doc_item = next(item for item in args['envelope_documents']['documents'] if item['document_id'] == document_id)
+    doc_name = doc_item['name']
+    has_pdf_suffix = doc_name[-4:].upper() == '.PDF'
+    pdf_file = has_pdf_suffix
+    # Add .pdf if it's a content or summary doc and doesn't already end in .pdf
+    if (doc_item["type"] == "content" or doc_item["type"] == "summary") and not has_pdf_suffix:
+        doc_name += ".pdf"
+        pdf_file = True
+    # Add .zip as appropriate
+    if doc_item["type"] == "zip":
+        doc_name += ".zip"
+
+    # Return the file information
+    if pdf_file:
+        mimetype = 'application/pdf'
+    elif doc_item["type"] == 'zip':
+        mimetype = 'application/zip'
+    else:
+        mimetype = 'application/octet-stream'
+
+    # {'mimetype': mimetype, 'doc_name': doc_name, 'data': temp_file}
+
+    return send_file(temp_file, attachment_filename=doc_name)
 
 def controller():
     """Controller router using the HTTP method"""
@@ -142,6 +190,9 @@ def create_controller():
             # query parameter on the returnUrl (see the makeRecipientViewRequest method)
             print("SIGNING CEREMONY")
             print(results["redirect_url"])
+
+            session["envelope_id"] = results["envelope_id"]
+
             return redirect(results["redirect_url"])
 
     else:
@@ -375,6 +426,22 @@ def make_envelope(args):
         recipients = Recipients(signers = [signer]),
         status = "sent" # requests that the envelope be created and sent.
     )
+
+    # Store document info in session, in case we want to download the PDF at the end of the signing process
+    print("DOCUMENTS")
+    print(envelope_definition.documents)
+
+
+
+    session["envelope_documents"] = {
+            "documents": [
+                {
+                    "document_id": 1,#envelope_definition.documents["document_id"]
+                    "name": "Example Document",
+                    "type": "content"
+                }
+            ]
+        }
 
     # print("TABS!!")
     # print(signer.tabs)
