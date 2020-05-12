@@ -20,6 +20,9 @@ import pickle
 import os.path
 from os import path
 
+# number of (seconds?) that token lasts for
+TOKEN_LIFETIME = 24000
+
 class MyForm(FlaskForm):
     name = StringField('name', validators=[DataRequired()])
 
@@ -50,6 +53,7 @@ def ds_must_authenticate():
 
 @app.route("/eg001", methods=["GET", "POST"])
 def eg001():
+    print("eg001!")
     # This needs to be executed here, so that the auth process can be carried out
     return eg001_embedded_signing.controller()
     # if request.method == 'POST':
@@ -65,12 +69,14 @@ def eg001():
 def submit():
     form = MyForm()
     if form.validate_on_submit():
+        print("form submission successful!")
         return redirect('/success')
     return render_template('submit.html', form=form)
 
 @app.route('/success',methods = ['GET','POST'])
 def success():
-   return eg001_embedded_signing.create_controller()
+    print("success route!")
+    return eg001_embedded_signing.create_controller()
 
 if __name__ == '__main__':
    app.run(debug = True)
@@ -138,9 +144,12 @@ def ds_token_ok(buffer_min=60):
     :param buffer_min: buffer time needed in minutes
     :return: true iff the user has an access token that will be good for another buffer min
     """
-    #buffer_min = 0
+    # buffer_min = 0
     ok = "ds_access_token" in session and "ds_expiration" in session
-    #ok = ok and (session["ds_expiration"] - timedelta(minutes=buffer_min)) > datetime.utcnow()
+
+    # print(session["ds_expiration"])
+    ok = ok and (session["ds_expiration"] - timedelta(minutes=buffer_min)) > datetime.utcnow()
+    print("Is token ok? " + str(ok))
     return ok
 
 
@@ -316,8 +325,9 @@ def ds_logout_internal():
 
 def write_token_to_file(token):
     # Just for testing
-    token["expires_in"] = 20
-    token["expires_at"] = time() + token["expires_in"]
+    # token["expires_in"] = TOKEN_LIFETIME
+    # token["expires_at"] = time() + token["expires_in"]
+    print("WRITE TOKEN TO FILE")
 
     # Write the new token to file
     with open('stored_token', 'wb') as stored_token_file:
@@ -415,11 +425,11 @@ def give_token_to_sesssion(token):
     print(token)
     # print(datetime.utcnow())
 
-    token['expires_in'] = 5
+    # token['expires_in'] = TOKEN_LIFETIME
 
     session["ds_access_token"] = token['access_token']
     session["ds_refresh_token"] = token['refresh_token']
-    session["ds_expiration"] = token['expires_at']
+    session["ds_expiration"] = datetime.utcnow() + timedelta(seconds=token['expires_in'])
 
     # Get the user info
     url = ds_config.DS_CONFIG["authorization_server"] + "/oauth/userinfo"
@@ -428,8 +438,8 @@ def give_token_to_sesssion(token):
 
     response = docusign.get(url, headers=auth).json()
 
-    print("RESPONSE")
-    print(response)
+    # print("RESPONSE")
+    # print(response)
 
     session["ds_user_name"] = response["name"]
     session["ds_user_email"] = response["email"]

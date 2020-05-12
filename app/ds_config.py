@@ -21,7 +21,7 @@ DS_CONFIG = {
     "demo_doc_path": "demo_documents",
     "doc_salary_docx": "World_Wide_Corp_salary.docx",
     "doc_docx": "World_Wide_Corp_Battle_Plan_Trafalgar.docx",
-    "doc_pdf":  "California_MACRA.pdf",
+    "doc_pdf":  "sample_form.pdf",
     # Payment gateway information is optional
     "gateway_account_id": "{DS_PAYMENT_GATEWAY_ID}",
     "gateway_name": "stripe",
