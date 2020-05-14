@@ -30,8 +30,9 @@ class OAuth2Token():
     access_token = ""
     refresh_token = ""
     expires_at = ""
-    def save(self):
+    def save(self, token):
         print("saving")
+        write_token_to_file(token)
 
 @app.route("/")
 def index():
@@ -139,7 +140,7 @@ def update_token(name, token, refresh_token=None, access_token=None):
     item.access_token = token['access_token']
     item.refresh_token = token.get('refresh_token')
     item.expires_at = token['expires_at']
-    item.save()
+    item.save(token)
 
 
 
@@ -206,7 +207,7 @@ docusign = oauth.docusign
 @app.route("/ds/login")
 def ds_login():
     print("LOGIN PROCESS")
-    print(session)
+
     # if the access token and expiry are present, it means we've logged in once before
     if "ds_access_token" in session and "ds_expiration" in session:
         # if we have a valid access token that hasn't expired, just log in
@@ -434,6 +435,9 @@ def give_token_to_sesssion(token):
     session["ds_access_token"] = token['access_token']
     session["ds_refresh_token"] = token['refresh_token']
     session["ds_expiration"] = datetime.utcnow() + timedelta(seconds=token['expires_in'])
+
+    print("Expiration Date:")
+    print(session['ds_expiration'])
 
     # Get the user info
     url = ds_config.DS_CONFIG["authorization_server"] + "/oauth/userinfo"

@@ -152,7 +152,11 @@ def create_controller():
         for v in form_variable_names:
             # print("name")
             # print(v.name)
-            v.value = pattern.sub("", request.form.get(v.name))
+            try:
+                v.value = pattern.sub("", request.form.get(v.name))
+            except:
+                # If field is left blank, pass in empty string as value
+                v.value = ""
             envelope_args["form_data"].append(v)
 
         # These args are used by Docusign for the electronic signature
@@ -189,7 +193,7 @@ def create_controller():
             # State can be stored/recovered using the framework's session or a
             # query parameter on the returnUrl (see the makeRecipientViewRequest method)
             print("SIGNING CEREMONY")
-            print(results["redirect_url"])
+            # print(results["redirect_url"])
 
             session["envelope_id"] = results["envelope_id"]
 
@@ -429,7 +433,7 @@ def make_envelope(args):
 
     # Store document info in session, in case we want to download the PDF at the end of the signing process
     print("DOCUMENTS")
-    print(envelope_definition.documents)
+    # print(envelope_definition.documents)
 
 
 
