@@ -101,6 +101,7 @@ def create_controller():
 
     # Names of the variables from forms.py
     form_variable_names = [
+        FormEntry("select", "pdf_name", "eh_pdf_name"),
         FormEntry("radio", "title", "eh_title"),
         FormEntry("text", "first_name", "eh_first_name"),
         FormEntry("text", "middle_initial", "eh_middle_initial"),
@@ -129,7 +130,10 @@ def create_controller():
         FormEntry("text", "policy_id", "eh_policy_id"),
         FormEntry("text", "ins_start_date", "eh_ins_start_date"),
         FormEntry("text", "ins_end_date", "eh_ins_end_date"),
-        FormEntry("select", "pref_payment", "eh_pref_payment")
+        FormEntry("select", "pref_payment", "eh_pref_payment"),
+        FormEntry("text", "bank_name", "eh_bank_name"),
+        FormEntry("text", "account_number", "eh_account_number"),
+        FormEntry("text", "routing_number", "eh_routing_number")
     ]
 
 
@@ -174,19 +178,22 @@ def create_controller():
         try:
             results = worker(args)
         except ApiException as err:
-            error_body_json = err and hasattr(err, "body") and err.body
-            # we can pull the DocuSign error code and message from the response body
-            error_body = json.loads(error_body_json)
-            error_code = error_body and "errorCode" in error_body and error_body["errorCode"]
-            error_message = error_body and "message" in error_body and error_body["message"]
-            # In production, may want to provide customized error messages and
-            # remediation advice to the user.
-
-            return render_template("error.html",
-                                   err=err,
-                                   error_code=error_code,
-                                   error_message=error_message
-                                   )
+            views.ds_logout();
+            views.ds_login();
+            return create_controller();
+            # error_body_json = err and hasattr(err, "body") and err.body
+            # # we can pull the DocuSign error code and message from the response body
+            # error_body = json.loads(error_body_json)
+            # error_code = error_body and "errorCode" in error_body and error_body["errorCode"]
+            # error_message = error_body and "message" in error_body and error_body["message"]
+            # # In production, may want to provide customized error messages and
+            # # remediation advice to the user.
+            #
+            # return render_template("error.html",
+            #                        err=err,
+            #                        error_code=error_code,
+            #                        error_message=error_message
+            #                        )
         if results:
             # Redirect the user to the Signing Ceremony
             # Don"t use an iFrame!
@@ -366,7 +373,15 @@ def make_envelope(args):
     returns an envelope definition
     """
     # Select PDF to display here
-    file_name = ds_config.DS_CONFIG["doc_pdf"]
+    # file_name = ds_config.DS_CONFIG["doc_pdf"]
+    file_name = ""
+    for a in args["form_data"]:
+        if (a.name == "pdf_name"):
+            file_name = a.value
+            break
+
+    if file_name == "":
+        print("ERROR: PDF FORM NOT FOUND")
 
     with open(path.join(demo_docs_path, file_name), "rb") as file:
         content_bytes = file.read()

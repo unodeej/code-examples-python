@@ -36,6 +36,8 @@ class OAuth2Token():
 
 @app.route("/")
 def index():
+    # ds_logout_internal()
+    # print('back')
     return render_template("home.html", title="Home - Python Code Examples")
 
 
@@ -105,21 +107,16 @@ def download_doc():
 #
 # OAuth support for DocuSign
 #
-# @token_update.connect_via(app)
-# def on_token_update(sender, name, token, refresh_token=None, access_token=None):
-#     print("~~BLINKER: AUTO TOKEN UPDATE!~~")
-#     if refresh_token:
-#         item = OAuth2Token.find(name=name, refresh_token=refresh_token)
-#     elif access_token:
-#         item = OAuth2Token.find(name=name, access_token=access_token)
-#     else:
-#         return
-#
-#     # update old token
-#     item.access_token = token['access_token']
-#     item.refresh_token = token.get('refresh_token')
-#     item.expires_at = token['expires_at']
-#     item.save()
+@token_update.connect_via(app)
+def on_token_update(sender, name, token, refresh_token=None, access_token=None):
+    print("~~BLINKER: AUTO TOKEN UPDATE!~~")
+    item = OAuth2Token()
+
+    # update old token
+    item.access_token = token['access_token']
+    item.refresh_token = token.get('refresh_token')
+    item.expires_at = token['expires_at']
+    item.save(token)
 
 # # This function is passed into the app so that it automatically refreshes the token
 def update_token(name, token, refresh_token=None, access_token=None):
@@ -208,6 +205,8 @@ docusign = oauth.docusign
 def ds_login():
     print("LOGIN PROCESS")
 
+
+
     # if the access token and expiry are present, it means we've logged in once before
     if "ds_access_token" in session and "ds_expiration" in session:
         # if we have a valid access token that hasn't expired, just log in
@@ -218,9 +217,9 @@ def ds_login():
 
         # if we have a valid ACCESS token, but it has expired, use the REFRESH token to generate a new access token
         else:
-            print("CAN REFRESH!!! (token is expired, but we can auto-refresh it)") # Not sure how it's autorefreshing though! Our two methods aren't firing their comments.
+            print("CAN REFRESH!!! (token is expired, but we can auto-refresh it)")
 
-            return redirect(url_for("ds_callback"))
+            return redirect(url_for("ds_callback", _external=True) )
 
             # token = docusign.refresh_token( ds_config.DS_CONFIG["authorization_server"] + "/oauth/token", session["ds_refresh_token"] )
             # #
@@ -314,6 +313,7 @@ def ds_logout():
 
 
 def ds_logout_internal():
+    print("DS_LOGOUT")
     # remove the keys and their values from the session
     session.pop("ds_access_token", None)
     session.pop("ds_refresh_token", None)
@@ -444,6 +444,7 @@ def give_token_to_sesssion(token):
 
     auth = {"Authorization": "Bearer " + session["ds_access_token"]}
 
+    # This GET request should automatically update the token if it's expired
     response = docusign.get(url, headers=auth).json()
 
     # print("RESPONSE")

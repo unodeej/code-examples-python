@@ -93,6 +93,12 @@
   <form method="post" action="/success">
       {{ form.csrf_token }}
 
+      {{ form.pdf_providers.label }} <br>
+      {{ form.pdf_providers(size=20) }} <br>
+
+      {{ form.pdf_name.label }} <br>
+      {{ form.pdf_name(size=20) }} <br>
+
       {{ form.title.label }} <br>
       {{ form.title(size=20) }} <br>
 
@@ -169,6 +175,10 @@
         Please fill out the following information for your preferred payment method.  If you prefer not to add your banking information now, you have the option of setting up your Electronic Funds Transfer later directly with the health insurance company. Just choose "Monthly billing by the insurance company". Your bank details are kept secure and encrypted.
       </div>
       {{ form.pref_payment.label }} {{ form.pref_payment(size=3) }} <br>
+
+      {{ form.bank_name.label }} {{ form.bank_name(size=20) }} <br>
+      {{ form.account_number.label }} {{ form.account_number(size=20) }} <br>
+      {{ form.routing_number.label }} {{ form.routing_number(size=20) }} <br>
 
       <input type="submit" value="Finish">
   </form>

@@ -1,8 +1,27 @@
 from flask_wtf import Form
 from wtforms import TextField, IntegerField, BooleanField, TextAreaField, SubmitField, RadioField, SelectField, SelectMultipleField
 from wtforms import validators, ValidationError
+from os import listdir
 
 class ClientForm(Form):
+    print(listdir("app/static/demo_documents"))
+
+    PDFS = {
+        "Anthem":
+        {
+            'sample_form.pdf': 'Anthem Blue Cross',
+            'World_Wide_Corp_fields.pdf': 'WorldWideCorp'
+        }
+    }
+
+    providers = []
+    for key, value in PDFS.items():
+        print(key)
+        providers.append( (key, key) )
+
+    pdf_providers = SelectField('PDF Provider', choices = providers)
+    pdf_name = SelectField('PDF Name', choices = providers)
+
     title = RadioField('Title', choices = [('Mr','Mr'),('Ms','Ms'),('Mrs','Mrs')])
     first_name = TextField("First Name ",[validators.Required("Please enter your first name.")])
     middle_initial = TextField("Middle Initial ")
@@ -61,5 +80,8 @@ class ClientForm(Form):
     pref_payment = SelectField("How would you prefer to pay?", choices = [('Mon','Monthly billing by the health insurance company'),
                                                                           ('Soc','Social Security check deduction (Not for Medicare Supplement Plans)'),
                                                                           ('Dir','Direct Debit') ] )
+    bank_name = TextField("Bank Name")
+    account_number = TextField("Account Number")
+    routing_number = TextField("Routing Number")
 
     submit = SubmitField("Submit")
