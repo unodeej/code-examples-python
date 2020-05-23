@@ -8,10 +8,10 @@ class ClientForm(Form):
 
     PDFS = {
         "Anthem":
-        {
-            'sample_form.pdf': 'Anthem Blue Cross',
-            'World_Wide_Corp_fields.pdf': 'WorldWideCorp'
-        }
+        [
+            ('sample_form.pdf', 'Anthem Blue Cross'),
+            ('World_Wide_Corp_fields.pdf', 'WorldWideCorp')
+        ]
     }
 
     providers = []
@@ -20,7 +20,7 @@ class ClientForm(Form):
         providers.append( (key, key) )
 
     pdf_providers = SelectField('PDF Provider', choices = providers)
-    pdf_name = SelectField('PDF Name', choices = providers)
+    pdf_name = SelectField('PDF Name', choices = PDFS["Anthem"])
 
     title = RadioField('Title', choices = [('Mr','Mr'),('Ms','Ms'),('Mrs','Mrs')])
     first_name = TextField("First Name ",[validators.Required("Please enter your first name.")])
