@@ -107,16 +107,16 @@ def download_doc():
 #
 # OAuth support for DocuSign
 #
-@token_update.connect_via(app)
-def on_token_update(sender, name, token, refresh_token=None, access_token=None):
-    print("~~BLINKER: AUTO TOKEN UPDATE!~~")
-    item = OAuth2Token()
-
-    # update old token
-    item.access_token = token['access_token']
-    item.refresh_token = token.get('refresh_token')
-    item.expires_at = token['expires_at']
-    item.save(token)
+# @token_update.connect_via(app)
+# def on_token_update(sender, name, token, refresh_token=None, access_token=None):
+#     print("~~BLINKER: AUTO TOKEN UPDATE!~~")
+#     item = OAuth2Token()
+#
+#     # update old token
+#     item.access_token = token['access_token']
+#     item.refresh_token = token.get('refresh_token')
+#     item.expires_at = token['expires_at']
+#     item.save(token)
 
 # # This function is passed into the app so that it automatically refreshes the token
 def update_token(name, token, refresh_token=None, access_token=None):
