@@ -4,23 +4,51 @@ from wtforms import validators, ValidationError
 from os import listdir
 
 class ClientForm(Form):
-    print(listdir("app/static/demo_documents"))
+    print("FORM")
+    folders = listdir("app/static/demo_documents")
+    print(folders)
 
     PDFS = {
-        "Anthem":
+        "aarp":
         [
-            ('sample_form.pdf', 'Anthem Blue Cross'),
-            ('World_Wide_Corp_fields.pdf', 'WorldWideCorp')
-        ]
+
+        ],
+        "aetna":
+        [
+
+        ],
+        "alignment":
+        [
+
+        ],
+        "anthem":
+        [
+
+        ],
+        "other": []
     }
+
+    for folder in folders:
+        files = listdir("app/static/demo_documents/" + folder)
+        for file in files:
+            path = "app/static/demo_documents/" + folder + "/" + file
+            file_name = [folder, file, listdir(path)[0] ]
+            PDFS[folder.lower()].append( (file_name, file_name) )
+
+
+
 
     providers = []
     for key, value in PDFS.items():
         print(key)
         providers.append( (key, key) )
 
-    pdf_providers = SelectField('PDF Provider', choices = providers)
-    pdf_name = SelectField('PDF Name', choices = PDFS["Anthem"])
+    pdf_providers = SelectField('PDF Provider', choices = providers, render_kw={'onchange': "choosePDF()"} )
+    pdf_aarp = SelectField('PDF Name', choices = PDFS["aarp"])
+    pdf_aetna = SelectField('PDF Name', choices = PDFS["aetna"])
+    pdf_alignment = SelectField('PDF Name', choices = PDFS["alignment"])
+    pdf_anthem = SelectField('PDF Name', choices = PDFS["anthem"])
+
 
     title = RadioField('Title', choices = [('Mr','Mr'),('Ms','Ms'),('Mrs','Mrs')])
     first_name = TextField("First Name ",[validators.Required("Please enter your first name.")])

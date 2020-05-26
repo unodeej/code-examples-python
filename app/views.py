@@ -26,6 +26,12 @@ TOKEN_LIFETIME = 24000
 class MyForm(FlaskForm):
     name = StringField('name', validators=[DataRequired()])
 
+record = {'field1': 'label1',
+          'field2': 'label2'
+         }
+for key, value in record.items():
+    setattr(MyForm, key, StringField(value))
+
 class OAuth2Token():
     access_token = ""
     refresh_token = ""

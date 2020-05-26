@@ -101,7 +101,11 @@ def create_controller():
 
     # Names of the variables from forms.py
     form_variable_names = [
-        FormEntry("select", "pdf_name", "eh_pdf_name"),
+        FormEntry("select", "pdf_aarp", "eh_pdf_name"),
+        FormEntry("select", "pdf_aetna", "eh_pdf_name"),
+        FormEntry("select", "pdf_alignment", "eh_pdf_name"),
+        FormEntry("select", "pdf_anthem", "eh_pdf_name"),
+
         FormEntry("radio", "title", "eh_title"),
         FormEntry("text", "first_name", "eh_first_name"),
         FormEntry("text", "middle_initial", "eh_middle_initial"),
@@ -374,16 +378,22 @@ def make_envelope(args):
     """
     # Select PDF to display here
     # file_name = ds_config.DS_CONFIG["doc_pdf"]
-    file_name = ""
+    file_name = []
+
     for a in args["form_data"]:
-        if (a.name == "pdf_name"):
+        print(a.name)
+        if (("pdf_" in a.name) and (not a.value == "")):
             file_name = a.value
             break
 
+    print("SELECTEDFILE" + file_name)
     if file_name == "":
         print("ERROR: PDF FORM NOT FOUND")
 
-    with open(path.join(demo_docs_path, file_name), "rb") as file:
+    else:
+        file_string = file_name[0] + "/" + file_name[1] + "/" + file_name[2]
+
+    with open(path.join(demo_docs_path, file_string), "rb") as file:
         content_bytes = file.read()
     base64_file_content = base64.b64encode(content_bytes).decode("ascii")
 

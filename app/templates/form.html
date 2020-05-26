@@ -96,8 +96,28 @@
       {{ form.pdf_providers.label }} <br>
       {{ form.pdf_providers(size=20) }} <br>
 
-      {{ form.pdf_name.label }} <br>
-      {{ form.pdf_name(size=20) }} <br>
+      <div id="pdf_names"></div>
+
+      <script>
+        function choosePDF() {
+          let box_value = document.getElementById("pdf_providers").value;
+                   if (box_value == "aarp") {
+              document.getElementById("pdf_names").innerHTML = '{{ form.pdf_aarp.label }}<br>{{ form.pdf_aarp (size=20) }}'
+
+            } else if (box_value == "aetna") {
+              document.getElementById("pdf_names").innerHTML = '{{ form.pdf_aetna.label }}<br>{{ form.pdf_aetna (size=20) }}'
+
+            } else if (box_value == "alignment") {
+              document.getElementById("pdf_names").innerHTML = '{{ form.pdf_alignment.label }}<br>{{ form.pdf_alignment (size=20) }}'
+
+            } else if (box_value == "anthem") {
+              document.getElementById("pdf_names").innerHTML = '{{ form.pdf_anthem.label }}<br>{{ form.pdf_anthem (size=20) }}'
+              
+            } else {
+              document.getElementById("pdf_names").innerHTML = "";
+            }
+        }
+      </script>
 
       {{ form.title.label }} <br>
       {{ form.title(size=20) }} <br>
