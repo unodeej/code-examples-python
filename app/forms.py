@@ -32,10 +32,9 @@ class ClientForm(Form):
         files = listdir("app/static/demo_documents/" + folder)
         for file in files:
             path = "app/static/demo_documents/" + folder + "/" + file
-            file_name = [folder, file, listdir(path)[0] ]
-            PDFS[folder.lower()].append( (file_name, file_name) )
+            file_name = folder + "/" + file + "/" + listdir(path)[0]
 
-
+            PDFS[folder.lower()].append( (file_name, file) )
 
 
     providers = []

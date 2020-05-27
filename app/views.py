@@ -108,6 +108,10 @@ def ds_return():
 def download_doc():
     return eg001_embedded_signing.download_doc()
 
+@app.route("/download_csv")
+def download_csv():
+    return eg001_embedded_signing.download_csv()
+
 
 ################################################################################
 #

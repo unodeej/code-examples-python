@@ -1,6 +1,6 @@
 """Example 001: Embedded Signing Ceremony"""
 
-from flask import render_template, url_for, redirect, session, flash, request, send_file
+from flask import render_template, url_for, redirect, session, flash, request, send_file, make_response
 from os import path
 import json
 from app import app, ds_config, views
@@ -9,6 +9,8 @@ import base64
 import re
 from docusign_esign import *
 from docusign_esign.client.api_exception import ApiException
+import csv
+import io
 
 eg = "eg001"  # reference (and url) for this example
 signer_client_id = 1000 # Used to indicate that the signer will use an embedded
@@ -75,6 +77,26 @@ def download_doc():
     # {'mimetype': mimetype, 'doc_name': doc_name, 'data': temp_file}
 
     return send_file(temp_file, attachment_filename=doc_name)
+
+def download_csv():
+    print("DOWNLOAD CSV")
+    print(session)
+
+    # whatever we want to call the new file
+    file_name = 'data.csv'
+
+    with open(file_name, mode='w') as csv_file:
+        si = io.StringIO()
+        writer = csv.writer(si) #csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+        for d in session["csv_data"]:
+            writer.writerow(d)
+
+        output = make_response(si.getvalue())
+
+        output.headers["Content-Disposition"] = "attachment; filename=" + file_name
+        output.headers["Content-type"] = "text/csv"
+        return output
 
 def controller():
     """Controller router using the HTTP method"""
@@ -161,7 +183,10 @@ def create_controller():
             # print("name")
             # print(v.name)
             try:
-                v.value = pattern.sub("", request.form.get(v.name))
+                if "pdf_" in v.name:
+                    v.value = request.form.get(v.name)
+                else:
+                    v.value = pattern.sub("", request.form.get(v.name))
             except:
                 # If field is left blank, pass in empty string as value
                 v.value = ""
@@ -278,6 +303,15 @@ def worker(args):
     envelope_id = results.envelope_id
     app.logger.info(f"Envelope was created. EnvelopeId {envelope_id}")
 
+
+    # STORE ENVELOPE ARGS IN SESSION! This may be insecure; don't leave confidential client data exposed!
+    print("ENV ARGS")
+    print(envelope_args['form_data'])
+    csv_data = []
+    for f in envelope_args['form_data']:
+        csv_data.append( [f.name, f.value] )
+    session["csv_data"] = csv_data
+
     # 3. Create the Recipient View request object
     recipient_view_request = RecipientViewRequest(
         authentication_method = authentication_method,
@@ -379,21 +413,21 @@ def make_envelope(args):
     # Select PDF to display here
     # file_name = ds_config.DS_CONFIG["doc_pdf"]
     file_name = []
+    file_string = ""
 
     for a in args["form_data"]:
         print(a.name)
-        if (("pdf_" in a.name) and (not a.value == "")):
+        print(a.value)
+        if (("pdf_" in a.name) and (a.value)):
             file_name = a.value
             break
 
-    print("SELECTEDFILE" + file_name)
-    if file_name == "":
+    print("FILE NAME")
+    print(file_name)
+    if not file_name:
         print("ERROR: PDF FORM NOT FOUND")
 
-    else:
-        file_string = file_name[0] + "/" + file_name[1] + "/" + file_name[2]
-
-    with open(path.join(demo_docs_path, file_string), "rb") as file:
+    with open(path.join(demo_docs_path, file_name   ), "rb") as file:
         content_bytes = file.read()
     base64_file_content = base64.b64encode(content_bytes).decode("ascii")
 
@@ -457,11 +491,6 @@ def make_envelope(args):
     )
 
     # Store document info in session, in case we want to download the PDF at the end of the signing process
-    print("DOCUMENTS")
-    # print(envelope_definition.documents)
-
-
-
     session["envelope_documents"] = {
             "documents": [
                 {
