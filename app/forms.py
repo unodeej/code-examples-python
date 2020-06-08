@@ -48,6 +48,8 @@ class ClientForm(Form):
     pdf_alignment = SelectField('PDF Name', choices = PDFS["alignment"])
     pdf_anthem = SelectField('PDF Name', choices = PDFS["anthem"])
 
+    include_SOA = BooleanField('Include Scope of Appointment PDF')
+
 
     title = RadioField('Title', choices = [('Mr','Mr'),('Ms','Ms'),('Mrs','Mrs')])
     first_name = TextField("First Name ",[validators.Required("Please enter your first name.")])

@@ -11,6 +11,9 @@ from docusign_esign import *
 from docusign_esign.client.api_exception import ApiException
 import csv
 import io
+import smtplib
+from email.message import EmailMessage
+import boto3
 
 eg = "eg001"  # reference (and url) for this example
 signer_client_id = 1000 # Used to indicate that the signer will use an embedded
@@ -30,7 +33,7 @@ class FormEntry():
         self.name = name
         self.anchor = anchor
 
-def download_doc():
+def get_pdf_form():
     """
     1. Call the envelope get method
     """
@@ -74,17 +77,9 @@ def download_doc():
     else:
         mimetype = 'application/octet-stream'
 
-    # {'mimetype': mimetype, 'doc_name': doc_name, 'data': temp_file}
+    return temp_file
 
-    return send_file(temp_file, attachment_filename=doc_name)
-
-def download_csv():
-    print("DOWNLOAD CSV")
-    print(session)
-
-    # whatever we want to call the new file
-    file_name = 'data.csv'
-
+def get_csv_file(file_name):
     with open(file_name, mode='w') as csv_file:
         si = io.StringIO()
         writer = csv.writer(si) #csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -92,11 +87,71 @@ def download_csv():
         for d in session["csv_data"]:
             writer.writerow(d)
 
-        output = make_response(si.getvalue())
+        return si.getvalue()
 
-        output.headers["Content-Disposition"] = "attachment; filename=" + file_name
-        output.headers["Content-type"] = "text/csv"
-        return output
+    # {'mimetype': mimetype, 'doc_name': doc_name, 'data': temp_file}
+def download_doc(doc_name):
+    file = get_pdf_form()
+    return send_file(file, attachment_filename=doc_name)
+
+def download_csv():
+    # whatever we want to call the new file
+    file_name = 'data.csv'
+
+    val = get_csv_file(file_name)
+
+    output = make_response(val)
+
+    output.headers["Content-Disposition"] = "attachment; filename=" + file_name
+    output.headers["Content-type"] = "text/csv"
+
+    return output
+
+def aws_upload(data, bucket_name, object_name):
+    s3 = boto3.resource('s3')
+    s3_client = boto3.client('s3')
+    expiration = 3600          # time in seconds for the url to remain valid
+
+
+    s3.Bucket(bucket_name).put_object(Key=object_name, Body=data)
+
+    try:
+        response = s3_client.generate_presigned_url('get_object',
+                                                    Params={'Bucket': bucket_name,
+                                                            'Key': object_name},
+                                                    ExpiresIn=expiration)
+    except:
+        print("ERROR: S3 Client rejected presigned url request")
+        return None
+
+    return response
+
+def send_email():
+    # important, you need to send it to a server that knows how to send e-mails for you
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    # don't know how to do it without cleartexting the password and not relying on some json file that you dont git control...
+    server.login('unodeej.app.test@gmail.com', 'cwecwooygqrusokv')
+    msg = EmailMessage()
+
+    # Upload the files to AWS, then get a link to the files that were uploaded
+    bucket_name = 'enrollhero-test'
+    object_name = 'AARPTESTDOC.csv'
+
+    data = get_csv_file("TEST.csv")
+    print(data)
+    resource_url = aws_upload(data, bucket_name, object_name)
+
+    msg.set_content(resource_url)
+
+    msg['Subject'] = 'TEST'
+    msg['From'] = 'djisawesome0@gmail.com'
+    msg['To'] = "unodeej@gmail.com"
+    server.send_message(msg)
+
+    flash:('Email sent to unodeej@gmail.com.')
+
+    return redirect(url_for("ds_return"))
 
 def controller():
     """Controller router using the HTTP method"""
@@ -127,6 +182,8 @@ def create_controller():
         FormEntry("select", "pdf_aetna", "eh_pdf_name"),
         FormEntry("select", "pdf_alignment", "eh_pdf_name"),
         FormEntry("select", "pdf_anthem", "eh_pdf_name"),
+
+        FormEntry("bool", "include_SOA", "eh_include_SOA"),
 
         FormEntry("radio", "title", "eh_title"),
         FormEntry("text", "first_name", "eh_first_name"),
@@ -415,24 +472,45 @@ def make_envelope(args):
     file_name = []
     file_string = ""
 
+    include_SOA = False
+
     for a in args["form_data"]:
-        print(a.name)
-        print(a.value)
+        # print(a.name)
+        # print(a.value)
         if (("pdf_" in a.name) and (a.value)):
             file_name = a.value
-            break
+        elif a.name == "include_SOA":
+            include_SOA = a.value
 
     print("FILE NAME")
     print(file_name)
     if not file_name:
         print("ERROR: PDF FORM NOT FOUND")
 
+    documents = []
+
+    if include_SOA:
+        # This document gets included with every envelope
+        with open(path.join(demo_docs_path, "Other/other/scope_of_appointment.pdf"), "rb") as file:
+            content_bytes = file.read()
+        base64_file_content = base64.b64encode(content_bytes).decode("ascii")
+
+        scope_of_appt_doc = Document(
+            document_base64 = base64_file_content,
+            name = "Example document", # can be different from actual file name
+            file_extension = "pdf", # many different document types are accepted
+            document_id = 1, # a label used to reference the doc
+        )
+
+        documents.append(scope_of_appt_doc)
+
+
+
     with open(path.join(demo_docs_path, file_name   ), "rb") as file:
         content_bytes = file.read()
     base64_file_content = base64.b64encode(content_bytes).decode("ascii")
-
     # Create the document model
-    document = Document( # create the DocuSign document object
+    doc = Document( # create the DocuSign document object
         document_base64 = base64_file_content,
         name = "Example document", # can be different from actual file name
         file_extension = "pdf", # many different document types are accepted
@@ -441,6 +519,11 @@ def make_envelope(args):
         # SET THIS TO TRUE IF PDF HAS ADOBE FIELD NAMES!
         transform_pdf_fields = False
     )
+
+    documents.append(doc)
+
+
+
 
     # Create the signer recipient model
     signer = Signer( # The signer
@@ -484,7 +567,7 @@ def make_envelope(args):
     envelope_definition = EnvelopeDefinition(
         email_subject = "Please sign this document sent from the Python SDK",
         # composite_templates = composite_template,
-        documents = [document],
+        documents = documents,
         # The Recipients object wants arrays for each recipient type
         recipients = Recipients(signers = [signer]),
         status = "sent" # requests that the envelope be created and sent.

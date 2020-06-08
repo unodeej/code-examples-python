@@ -1,8 +1,6 @@
 """Defines the app's routes. Includes OAuth2 support for DocuSign"""
 
 from flask import render_template, url_for, redirect, session, flash, request, render_template
-#from flask_oauthlib.client import OAuth
-#from flask.json import jsonify
 from authlib.integrations.flask_client import OAuth, token_update
 
 from flask_wtf import FlaskForm
@@ -12,7 +10,6 @@ from app.forms import ClientForm
 
 from datetime import datetime, timedelta
 import requests
-#from requests_oauthlib import OAuth2Session
 import uuid
 from app import app, ds_config, eg001_embedded_signing
 from time import time
@@ -20,9 +17,7 @@ import pickle
 import os.path
 from os import path
 
-# number of (seconds?) that token lasts for
-TOKEN_LIFETIME = 24000
-
+# This class creates the WT form
 class MyForm(FlaskForm):
     name = StringField('name', validators=[DataRequired()])
 
@@ -32,6 +27,7 @@ record = {'field1': 'label1',
 for key, value in record.items():
     setattr(MyForm, key, StringField(value))
 
+# This class provides the object for the auto-update token function
 class OAuth2Token():
     access_token = ""
     refresh_token = ""
@@ -40,10 +36,11 @@ class OAuth2Token():
         print("saving")
         write_token_to_file(token)
 
+######################################
+###   APP ROUTES   ###################
+######################################
 @app.route("/")
 def index():
-    # ds_logout_internal()
-    # print('back')
     return render_template("home.html", title="Home - Python Code Examples")
 
 
@@ -55,8 +52,6 @@ def r_index():
 @app.route("/ds/must_authenticate")
 def ds_must_authenticate():
     return ds_login()
-    #return render_template("auto_auth.html", title="Must authenticate")
-
     #return render_template("must_authenticate.html", title="Must authenticate")
 
 
@@ -74,6 +69,7 @@ def eg001():
     #         flash:('All fields are required.')
     #     return render_template('form.html', form = form)
 
+
 @app.route('/submit', methods=('GET', 'POST'))
 def submit():
     form = MyForm()
@@ -82,10 +78,12 @@ def submit():
         return redirect('/success')
     return render_template('submit.html', form=form)
 
+
 @app.route('/success',methods = ['GET','POST'])
 def success():
     print("success route!")
     return eg001_embedded_signing.create_controller()
+
 
 if __name__ == '__main__':
    app.run(debug = True)
@@ -111,6 +109,10 @@ def download_doc():
 @app.route("/download_csv")
 def download_csv():
     return eg001_embedded_signing.download_csv()
+
+@app.route("/send_email")
+def send_email():
+    return eg001_embedded_signing.send_email()
 
 
 ################################################################################
