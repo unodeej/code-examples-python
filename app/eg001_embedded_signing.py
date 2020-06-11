@@ -289,8 +289,10 @@ def create_controller():
             # print(results["redirect_url"])
 
             session["envelope_id"] = results["envelope_id"]
+            print("BBB")
+            print(results["redirect_url"]) # <-- this URL! Can we send this in an email??
 
-            return redirect(results["redirect_url"])
+            return render_template('form_submitted.html', url=results["redirect_url"])
 
     else:
         print("must_authenticate")
@@ -382,13 +384,17 @@ def worker(args):
     results = envelope_api.create_recipient_view(args["account_id"], envelope_id,
         recipient_view_request = recipient_view_request)
 
-
     # print("ENVELOPE DEFINITION")
     # print(envelope_definition.documents)
 
     # print ("MYURL" + results.url)
     return {"envelope_id": envelope_id, "redirect_url": results.url}
 
+
+def signing_ceremony(id):
+    print("SIGN CEREMONY ~~~")
+    print(id)
+    return render_template("signing_ceremony.html")
 
 # Author: DJ Uno
 # This function sets up the signature and text field tabs for the document.

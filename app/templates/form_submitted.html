@@ -1,0 +1,41 @@
+<!-- extend base layout -->
+{% extends "base.html" %}
+
+{% block content %}
+    <style>
+      .button {
+        width: 600px;
+        height: 60px;
+      }
+    </style>
+    <div id="index-page">
+        <h2>Sign your document</h2>
+        <br>
+
+        <form action = {{url}}>
+          <input type="submit" class="button" value="Sign Now" />
+        </form>
+        <br>
+
+        <h4>Sign later:</h4>
+        <textarea rows="7" cols="50" id="myInput" readonly> {{ url }} </textarea>
+
+        <script>
+          function copyText() {
+            var copyText = document.getElementById("myInput");
+            copyText.select();
+            copyText.setSelectionRange(0, 99999); /*For mobile devices*/
+
+            document.execCommand("copy");
+          }
+        </script>
+
+        <br>
+        <button onclick="copyText()" class="button">Copy link</button>
+    </div>
+
+    <!-- anchor-js is only for the index page -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/anchor-js/4.1.1/anchor.min.js"></script>
+    <script>anchors.options.placement = 'left'; anchors.add('h4')</script>
+
+{% endblock %}

@@ -1,0 +1,18 @@
+<!-- extend base layout -->
+{% extends "base.html" %}
+
+{% block content %}
+    <div id="index-page">
+        <h2>Sign your documentation</h2>
+        <p>Sign now:</p>
+
+        <h4 id="example001">1. <a href="create_controller">Embedded Signing Ceremony</a></h4>
+
+        <p>Sign later:</p>
+    </div>
+
+    <!-- anchor-js is only for the index page -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/anchor-js/4.1.1/anchor.min.js"></script>
+    <script>anchors.options.placement = 'left'; anchors.add('h4')</script>
+
+{% endblock %}

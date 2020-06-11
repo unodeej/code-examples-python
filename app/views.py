@@ -82,6 +82,11 @@ def submit():
 @app.route('/success',methods = ['GET','POST'])
 def success():
     print("success route!")
+    print("URL TO SIGN")
+    return eg001_embedded_signing.create_controller()#return redirect('/form_submitted')
+
+@app.route('/create_controller')
+def create_controller():
     return eg001_embedded_signing.create_controller()
 
 
@@ -113,6 +118,15 @@ def download_csv():
 @app.route("/send_email")
 def send_email():
     return eg001_embedded_signing.send_email()
+
+# @app.route("/form_submitted/<url>")
+# def form_submitted(url):
+#     return render_template("form_submitted.html",
+#         url = url)
+
+# @app.route("/signing_ceremony/<url>")
+# def signing_ceremony(url):
+#     return eg001_embedded_signing.signing_ceremony(url)
 
 
 ################################################################################
