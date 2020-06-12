@@ -178,6 +178,7 @@ def create_controller():
 
     # Names of the variables from forms.py
     form_variable_names = [
+        FormEntry("select", "pdf_aaatest", "eh_pdf_aaatest"),
         FormEntry("select", "pdf_aarp", "eh_pdf_name"),
         FormEntry("select", "pdf_aetna", "eh_pdf_name"),
         FormEntry("select", "pdf_alignment", "eh_pdf_name"),
@@ -189,7 +190,7 @@ def create_controller():
         FormEntry("text", "first_name", "eh_first_name"),
         FormEntry("text", "middle_initial", "eh_middle_initial"),
         FormEntry("text", "last_name", "eh_last_name"),
-        FormEntry("text", "home_address", "eh_home_address"),
+        FormEntry("text", "home_address", "Address"),
         FormEntry("text", "city", "eh_city"),
         FormEntry("text", "state", "eh_state"),
         FormEntry("text", "zip", "eh_zip"),

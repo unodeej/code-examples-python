@@ -9,6 +9,10 @@ class ClientForm(Form):
     print(folders)
 
     PDFS = {
+        "aaatest":
+        [
+
+        ],
         "aarp":
         [
 
@@ -43,6 +47,7 @@ class ClientForm(Form):
         providers.append( (key, key) )
 
     pdf_providers = SelectField('PDF Provider', choices = providers, render_kw={'onchange': "choosePDF()"} )
+    pdf_aaatest = SelectField('PDF Name', choices = PDFS["aaatest"])
     pdf_aarp = SelectField('PDF Name', choices = PDFS["aarp"])
     pdf_aetna = SelectField('PDF Name', choices = PDFS["aetna"])
     pdf_alignment = SelectField('PDF Name', choices = PDFS["alignment"])
