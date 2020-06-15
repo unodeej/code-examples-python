@@ -124,9 +124,25 @@ def send_email():
 #     return render_template("form_submitted.html",
 #         url = url)
 
-# @app.route("/signing_ceremony/<url>")
-# def signing_ceremony(url):
-#     return eg001_embedded_signing.signing_ceremony(url)
+@app.route("/signing_ceremony/<envelope_id>/<account_id>")
+def signing_ceremony(envelope_id, account_id):
+    env = request.args.get("envelopeId") # envelope_id
+    session["eg"] = "signing_ceremony"
+    session["envelopeId"] = envelope_id
+    session["accountId"] = account_id
+    return ds_login()
+    #return eg001_embedded_signing.signing_ceremony(envelope_id, account_id)
+
+
+    # http://localhost:5000/
+    # signing_ceremony/
+    # https%3A%2F%2Fdemo.docusign.net%2Frestapi/
+    # fb32a34e-96d8-4289-9e12-7dc9f3438e82/
+    # 3c6468ea-12aa-4d2c-b90a-5f877062b53d/
+    # 1000/
+    # http%3A%2F%2Flocalhost%3A5000%2Fds_return/
+    # David%20Uno/
+    # unodeej@gmail.com
 
 
 ################################################################################
@@ -433,7 +449,10 @@ def ds_callback():
     # Redirect to the form page
     if not redirect_url:
         redirect_url = url_for("index")
-    return redirect(url_for("eg001"))
+    elif redirect_url == "signing_ceremony":
+        return eg001_embedded_signing.signing_ceremony(session["envelopeId"], session["accountId"])
+
+    return redirect(redirect_url)
 
     # resp = docusign.authorized_response()
     # if resp is None or resp.get("access_token") is None:

@@ -11,14 +11,17 @@
     <div id="index-page">
         <h2>Sign your document</h2>
         <br>
+        Envelope ID: {{ envelope_id }}
+        <br>
 
-        <form action = {{ url }}>
-          <input type="submit" class="button" value="Sign Now" />
-        </form>
+        <h4>
+          <a href={{ sign_now_url }}>Sign Now</a>
+        </h4>
+
         <br>
 
         <h4>Sign later:</h4>
-        <textarea rows="7" cols="50" id="myInput" readonly> {{ url }} </textarea>
+        <textarea rows="7" cols="50" id="myInput" readonly> {{ sign_later_url }} </textarea>
 
         <script>
           function copyText() {

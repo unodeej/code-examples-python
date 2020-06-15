@@ -14,6 +14,7 @@ import io
 import smtplib
 from email.message import EmailMessage
 import boto3
+import urllib
 
 eg = "eg001"  # reference (and url) for this example
 signer_client_id = 1000 # Used to indicate that the signer will use an embedded
@@ -286,14 +287,20 @@ def create_controller():
             # Don"t use an iFrame!
             # State can be stored/recovered using the framework's session or a
             # query parameter on the returnUrl (see the makeRecipientViewRequest method)
-            print("SIGNING CEREMONY")
-            # print(results["redirect_url"])
+
 
             session["envelope_id"] = results["envelope_id"]
             print("BBB")
             print(results["redirect_url"]) # <-- this URL! Can we send this in an email??
 
-            return render_template('form_submitted.html', url=results["redirect_url"])
+            #return redirect(results["redirect_url"])
+            url = ("signing_ceremony/" +
+                str(session["envelope_id"]) + "/" +
+                str(args["account_id"]) )
+
+            sign_later_url = request.base_url.replace("success", "") + url
+
+            return render_template('form_submitted.html', sign_now_url=results["redirect_url"], sign_later_url=sign_later_url)
 
     else:
         print("must_authenticate")
@@ -347,7 +354,6 @@ def worker(args):
     # 1. Create the envelope request object
     envelope_definition = make_envelope(envelope_args)
 
-
     # 2. call Envelopes::create API method
     # Exceptions will be caught by the calling function
     api_client = ApiClient()
@@ -357,12 +363,10 @@ def worker(args):
     envelope_api = EnvelopesApi(api_client)
     results = envelope_api.create_envelope(args["account_id"], envelope_definition=envelope_definition)
 
-    # print("RESULTS!")
-    # print(results)
-
     envelope_id = results.envelope_id
     app.logger.info(f"Envelope was created. EnvelopeId {envelope_id}")
 
+    view_req = create_view_request(envelope_id, args["account_id"], envelope_args["signer_client_id"], envelope_args["ds_return_url"], envelope_args["signer_name"], envelope_args["signer_email"], envelope_api)
 
     # STORE ENVELOPE ARGS IN SESSION! This may be insecure; don't leave confidential client data exposed!
     print("ENV ARGS")
@@ -372,17 +376,20 @@ def worker(args):
         csv_data.append( [f.name, f.value] )
     session["csv_data"] = csv_data
 
+    return view_req
+
+def create_view_request(envelope_id, account_id, signer_client_id, return_url, signer_name, signer_email, envelope_api):
     # 3. Create the Recipient View request object
     recipient_view_request = RecipientViewRequest(
         authentication_method = authentication_method,
-        client_user_id = envelope_args["signer_client_id"],
+        client_user_id = signer_client_id,
         recipient_id = "1",
-        return_url = envelope_args["ds_return_url"],
-        user_name = envelope_args["signer_name"], email = envelope_args["signer_email"]
+        return_url = return_url,
+        user_name = signer_name, email = signer_email
     )
     # 4. Obtain the recipient_view_url for the signing ceremony
     # Exceptions will be caught by the calling function
-    results = envelope_api.create_recipient_view(args["account_id"], envelope_id,
+    results = envelope_api.create_recipient_view(account_id, envelope_id,
         recipient_view_request = recipient_view_request)
 
     # print("ENVELOPE DEFINITION")
@@ -392,10 +399,29 @@ def worker(args):
     return {"envelope_id": envelope_id, "redirect_url": results.url}
 
 
-def signing_ceremony(id):
+def signing_ceremony(envelope_id, account_id):
     print("SIGN CEREMONY ~~~")
-    print(id)
-    return render_template("signing_ceremony.html")
+
+    base_path = session["ds_base_path"]
+    return_url = url_for("ds_return", _external=True)
+    signer_name = "David Uno"
+    signer_email = "unodeej@gmail.com"
+
+    # Authenticate (login/logout?)
+    access_token = session["ds_access_token"]
+
+    api_client = ApiClient()
+    api_client.host = base_path
+    api_client.set_default_header("Authorization", "Bearer " + access_token)
+    envelope_api = EnvelopesApi(api_client)
+
+
+
+    view_req = create_view_request(envelope_id, account_id, signer_client_id, return_url, signer_name, signer_email, envelope_api)
+
+    return redirect(view_req["redirect_url"])
+
+
 
 # Author: DJ Uno
 # This function sets up the signature and text field tabs for the document.
