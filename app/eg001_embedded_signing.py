@@ -34,6 +34,32 @@ class FormEntry():
         self.name = name
         self.anchor = anchor
 
+
+
+def controller():
+    """Controller router using the HTTP method"""
+    if request.method == "GET":
+        return get_controller()
+    else:
+        return render_template("404.html"), 404
+
+
+def get_controller():
+    """responds with the form for the example"""
+
+    if views.ds_token_ok():
+        form = ClientForm()
+
+        if form.validate() == False:
+            flash:('All fields are required.')
+
+        return render_template('form.html', form = form)
+    else:
+        # Save the current operation so it will be resumed after authentication
+        session["eg"] = url_for(eg)
+        return redirect(url_for("ds_login"))
+
+
 def get_pdf_form():
     """
     1. Call the envelope get method
@@ -154,18 +180,7 @@ def send_email():
 
     return redirect(url_for("ds_return"))
 
-def controller():
-    """Controller router using the HTTP method"""
-    if request.method == "GET":
-        return get_controller()
-    # elif request.method == "POST":
-    #     form = ClientForm()
-    #
-    #     if form.validate() == False:
-    #         flash:('All fields are required.')
-    #     return render_template('form.html', form = form)
-    else:
-        return render_template("404.html"), 404
+
 
 
 def create_controller():
@@ -266,16 +281,23 @@ def create_controller():
         try:
             results = worker(args)
         except ApiException as err:
-            views.ds_logout();
-            views.ds_login();
-            return create_controller();
-            # error_body_json = err and hasattr(err, "body") and err.body
-            # # we can pull the DocuSign error code and message from the response body
-            # error_body = json.loads(error_body_json)
-            # error_code = error_body and "errorCode" in error_body and error_body["errorCode"]
-            # error_message = error_body and "message" in error_body and error_body["message"]
-            # # In production, may want to provide customized error messages and
-            # # remediation advice to the user.
+            error_body_json = err and hasattr(err, "body") and err.body
+            # we can pull the DocuSign error code and message from the response body
+            error_body = json.loads(error_body_json)
+            error_code = error_body and "errorCode" in error_body and error_body["errorCode"]
+            error_message = error_body and "message" in error_body and error_body["message"]
+
+
+            print("ERROR FROM WORKER(): " + error_message)
+
+            # views.ds_logout_internal();
+
+            session["eg"] = "signing_ceremony"
+            return views.ds_callback()#views.ds_login();
+
+            #return create_controller();
+            # In production, may want to provide customized error messages and
+            # remediation advice to the user.
             #
             # return render_template("error.html",
             #                        err=err,
@@ -311,7 +333,7 @@ def create_controller():
         # we'll make the user re-enter the form data after
         # authentication.
         session["eg"] = url_for(eg)
-        return redirect(url_for("ds_must_authenticate"))
+        return redirect(url_for("ds_login"))
 
 
 # ***DS.snippet.0.start
@@ -624,28 +646,7 @@ def make_envelope(args):
 # ***DS.snippet.0.end
 
 
-def get_controller():
-    """responds with the form for the example"""
 
-    if views.ds_token_ok():
-        form = ClientForm()
-
-        if form.validate() == False:
-            flash:('All fields are required.')
-        return render_template('form.html', form = form)
-        # return render_template("eg001_embedded_signing.html",
-        #                        title="Embedded Signing Ceremony",
-        #                        source_file=path.basename(__file__),
-        #                        source_url=ds_config.DS_CONFIG["github_example_url"] + path.basename(__file__),
-        #                        documentation=ds_config.DS_CONFIG["documentation"] + eg,
-        #                        show_doc=ds_config.DS_CONFIG["documentation"],
-        #                        signer_name=ds_config.DS_CONFIG["signer_name"],
-        #                        signer_email=ds_config.DS_CONFIG["signer_email"]
-        # )
-    else:
-        # Save the current operation so it will be resumed after authentication
-        session["eg"] = url_for(eg)
-        return redirect(url_for("ds_must_authenticate"))
 
 
 
