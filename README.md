@@ -76,7 +76,7 @@ The **refresh token** is not used in this example.
    This example sends an envelope that requires entering in a six digit code from an text message for the purpose of multi-factor authentication.   
 1. **Requiring Phone authentication for a recipient**
    [Source.](./app/eg021_phone_authentication.py)
-   This example sends an envelope that requires entering in a voice-based response code for the purpose of multi-factor authentication. 
+   This example sends an envelope that requires entering in a voice-based response code for the purpose of multi-factor authentication.
 1. **Requiring Knowledge-Based Authentication (KBA) for a Recipient**
    [Source.](./app/eg022_kba_authentication.py)
    This example sends an envelope that requires passing a Public records check to validate identity for the purpose of multi-factor authentication.    
@@ -98,10 +98,10 @@ The **refresh token** is not used in this example.
 
    If you will not be running the example on your own workstation,
    use the appropriate DNS name and port instead of `localhost`
-   
+
    This [**video**](https://www.youtube.com/watch?v=eiRI4fe5HgM)
    demonstrates how to create an Integration Key (client id) for a
-   user application like this example. Note that the redirect url for your 
+   user application like this example. Note that the redirect url for your
    Integration Key will be `http://localhost:5000/ds/callback` if you
    use the default Python settings.
 
