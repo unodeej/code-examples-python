@@ -46,7 +46,7 @@ class ClientForm(Form):
         print(key)
         providers.append( (key, key) )
 
-    pdf_providers = SelectField('PDF Provider', choices = providers, render_kw={'onchange': "choosePDF()"} )
+    pdf_providers = SelectField('PDF Provider', [validators.Required("Please choose a PDF file.")], choices = providers, render_kw={'onchange': "choosePDF()"})
     pdf_aaatest = SelectField('PDF Name', choices = PDFS["aaatest"])
     pdf_aarp = SelectField('PDF Name', choices = PDFS["aarp"])
     pdf_aetna = SelectField('PDF Name', choices = PDFS["aetna"])

@@ -61,6 +61,7 @@ def submit():
     return render_template('submit.html', form=form)
 
 
+# Called after successful authentication
 @app.route('/success',methods = ['GET','POST'])
 def success():
     return eg001_embedded_signing.create_controller()

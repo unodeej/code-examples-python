@@ -15,6 +15,11 @@ import smtplib
 from email.message import EmailMessage
 import boto3
 import urllib
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+
+# Global OAuth variables
 
 eg = "eg001"  # reference (and url) for this example
 signer_client_id = 1000 # Used to indicate that the signer will use an embedded
@@ -25,6 +30,20 @@ authentication_method = "None" # How is this application authenticating
                                # https://developers.docusign.com/esign-rest-api/reference/Envelopes/EnvelopeViews/createRecipient
 
 demo_docs_path = path.abspath(path.join(path.dirname(path.realpath(__file__)), "static/demo_documents"))
+
+
+# Global spreadsheet variables
+
+scope = ["https://spreadsheets.google.com/feeds","https://www.googleapis.com/auth/spreadsheets","https://www.googleapis.com/auth/drive.file","https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("ehTestSheet-29bac4a93378.json", scope)
+client = gspread.authorize(creds)
+
+sheet = client.open("eh_test_sheet").sheet1
+
+data = sheet.get_all_records()
+
+
+
 
 class FormEntry():
     value = ""
@@ -59,6 +78,182 @@ def get_controller():
         session["eg"] = url_for(eg)
         return redirect(url_for("ds_login"))
 
+def create_controller():
+    """
+    1. Check the token
+    2. Call the worker method
+    3. Redirect the user to the signing ceremony
+    """
+
+    # Names of the variables from forms.py
+    form_variable_names = [
+        FormEntry("select", "pdf_aaatest", "eh_pdf_aaatest"),
+        FormEntry("select", "pdf_aarp", "eh_pdf_name"),
+        FormEntry("select", "pdf_aetna", "eh_pdf_name"),
+        FormEntry("select", "pdf_alignment", "eh_pdf_name"),
+        FormEntry("select", "pdf_anthem", "eh_pdf_name"),
+
+        FormEntry("bool", "include_SOA", "eh_include_SOA"),
+
+        FormEntry("radio", "title", "eh_title"),
+        FormEntry("text", "first_name", "eh_first_name"),
+        FormEntry("text", "middle_initial", "eh_middle_initial"),
+        FormEntry("text", "last_name", "eh_last_name"),
+        FormEntry("text", "home_address", "eh_home_address"),
+        FormEntry("text", "city", "eh_city"),
+        FormEntry("text", "state", "eh_state"),
+        FormEntry("text", "zip", "eh_zip"),
+        FormEntry("bool", "diff_mail_addr", "eh_diff_mail_addr"),
+        FormEntry("text", "mailing_address", "eh_mailing_address"),
+        FormEntry("text", "mailing_city", "eh_mailing_city"),
+        FormEntry("text", "mailing_state", "eh_mailing_state"),
+        FormEntry("text", "mailing_zip", "eh_mailing_zip"),
+        FormEntry("text", "home_tel", "eh_home_tel"),
+        FormEntry("text", "email", "eh_email"),
+        FormEntry("text", "dob", "eh_dob"),
+        FormEntry("text", "aarp", "eh_aarp"),
+        FormEntry("select_mult", "add_coverage", "eh_add_coverage"),
+        FormEntry("text", "claim_num", "eh_claim_num"),
+        FormEntry("select", "hospital_month", "eh_hospital_month"),
+        FormEntry("select", "hospital_year", "eh_hospital_year"),
+        FormEntry("select", "medical_month", "eh_medical_month"),
+        FormEntry("select", "medical_year", "eh_medical_year"),
+        FormEntry("select", "plan_type", "eh_plan_type"),
+        FormEntry("text", "ins_company", "eh_ins_company"),
+        FormEntry("text", "policy_id", "eh_policy_id"),
+        FormEntry("text", "ins_start_date", "eh_ins_start_date"),
+        FormEntry("text", "ins_end_date", "eh_ins_end_date"),
+        FormEntry("select", "pref_payment", "eh_pref_payment"),
+        FormEntry("text", "bank_name", "eh_bank_name"),
+        FormEntry("text", "account_number", "eh_account_number"),
+        FormEntry("text", "routing_number", "eh_routing_number")
+    ]
+
+
+    minimum_buffer_min = 3
+    # Check the access token
+    if views.ds_token_ok(minimum_buffer_min):
+        # 2. Call the worker method
+        # More data validation would be a good idea here
+        # Strip anything other than characters listed
+        pattern = re.compile("([^\w \-\@\.\,])+")
+
+        envelope_args = {
+            "signer_client_id": signer_client_id,
+            "form_data": [],
+
+            "ds_return_url": url_for("ds_return", _external=True)
+        }
+
+        # Populate envelope_args with the data from the form
+        for v in form_variable_names:
+            try:
+                if "pdf_" in v.name:
+                    v.value = request.form.get(v.name)
+                else:
+                    v.value = pattern.sub("", request.form.get(v.name))
+            except:
+                # If field is left blank, pass in empty string as value
+                v.value = ""
+            envelope_args["form_data"].append(v)
+
+        # These args are used by Docusign for the electronic signature
+        envelope_args["signer_email"] = request.form.get("email")
+        envelope_args["signer_name"]  = request.form.get("first_name") + " " + request.form.get("last_name")
+
+        # Pass args into worker
+        args = {
+            "account_id": session["ds_account_id"],
+            "base_path": session["ds_base_path"],
+            "ds_access_token": session["ds_access_token"],
+            "envelope_args": envelope_args
+        }
+
+        try:
+            results = worker(args)
+        except ApiException as err:
+            error_body_json = err and hasattr(err, "body") and err.body
+            # we can pull the DocuSign error code and message from the response body
+            error_body = json.loads(error_body_json)
+            error_code = error_body and "errorCode" in error_body and error_body["errorCode"]
+            error_message = error_body and "message" in error_body and error_body["message"]
+
+
+            print("ERROR FROM WORKER(): " + error_message)
+
+            # views.ds_logout_internal();
+
+            # session["eg"] = url_for("success")      # <-- problem: this works, except that our new request doesn't have the form data. Re-think architecture here.
+            return views.ds_callback()#views.ds_login();
+
+        if results:
+            # Redirect the user to the Signing Ceremony
+            # Don"t use an iFrame!
+            # State can be stored/recovered using the framework's session or a
+            # query parameter on the returnUrl (see the makeRecipientViewRequest method)
+
+
+            session["envelope_id"] = results["envelope_id"]
+
+            url = ("signing_ceremony/" +
+                str(session["envelope_id"]) + "/" +
+                str(args["account_id"]) )
+
+            sign_later_url = request.base_url.replace("success", "") + url
+
+            return render_template('form_submitted.html', sign_now_url=results["redirect_url"], sign_later_url=sign_later_url)
+
+    else:
+        print("must_authenticate")
+        flash("Sorry, you need to re-authenticate.")
+        # We could store the parameters of the requested operation
+        # so it could be restarted automatically.
+        # But since it should be rare to have a token issue here,
+        # we'll make the user re-enter the form data after
+        # authentication.
+        session["eg"] = url_for(eg)
+        return redirect(url_for("ds_login"))
+
+# ***DS.snippet.0.start
+def worker(args):
+    """
+    1. Create the envelope request object
+    2. Send the envelope
+    3. Create the Recipient View request object
+    4. Obtain the recipient_view_url for the signing ceremony
+    """
+    envelope_args = args["envelope_args"]
+
+    # 1. Create the envelope request object
+    envelope_definition = make_envelope(envelope_args)
+
+    # 2. call Envelopes::create API method
+    # Exceptions will be caught by the calling function
+    api_client = ApiClient()
+    api_client.host = args["base_path"]
+    api_client.set_default_header("Authorization", "Bearer " + args["ds_access_token"])
+
+    envelope_api = EnvelopesApi(api_client)
+    results = envelope_api.create_envelope(args["account_id"], envelope_definition=envelope_definition)
+
+    envelope_id = results.envelope_id
+    app.logger.info(f"Envelope was created. EnvelopeId {envelope_id}")
+
+    view_req = create_view_request(envelope_id, args["account_id"], envelope_args["signer_client_id"], envelope_args["ds_return_url"], envelope_args["signer_name"], envelope_args["signer_email"], envelope_api)
+
+    # STORE ENVELOPE ARGS IN SESSION! This may be insecure; don't leave confidential client data exposed!
+    print("ENV ARGS")
+    print(envelope_args['form_data'])
+    csv_data = []
+    google_form_data = []
+    for f in envelope_args['form_data']:
+        csv_data.append( [f.name, f.value] )
+        google_form_data.append( f.value )
+    session["csv_data"] = csv_data
+
+    sheet.insert_row(google_form_data, 2)
+
+    return view_req
 
 def get_pdf_form():
     """
@@ -183,222 +378,10 @@ def send_email():
 
 
 
-def create_controller():
-    """
-    1. Check the token
-    2. Call the worker method
-    3. Redirect the user to the signing ceremony
-    """
-
-    # print("FORM DATA: " + str(request.form))
-
-    # Names of the variables from forms.py
-    form_variable_names = [
-        FormEntry("select", "pdf_aaatest", "eh_pdf_aaatest"),
-        FormEntry("select", "pdf_aarp", "eh_pdf_name"),
-        FormEntry("select", "pdf_aetna", "eh_pdf_name"),
-        FormEntry("select", "pdf_alignment", "eh_pdf_name"),
-        FormEntry("select", "pdf_anthem", "eh_pdf_name"),
-
-        FormEntry("bool", "include_SOA", "eh_include_SOA"),
-
-        FormEntry("radio", "title", "eh_title"),
-        FormEntry("text", "first_name", "eh_first_name"),
-        FormEntry("text", "middle_initial", "eh_middle_initial"),
-        FormEntry("text", "last_name", "eh_last_name"),
-        FormEntry("text", "home_address", "Address"),
-        FormEntry("text", "city", "eh_city"),
-        FormEntry("text", "state", "eh_state"),
-        FormEntry("text", "zip", "eh_zip"),
-        FormEntry("bool", "diff_mail_addr", "eh_diff_mail_addr"),
-        FormEntry("text", "mailing_address", "eh_mailing_address"),
-        FormEntry("text", "mailing_city", "eh_mailing_city"),
-        FormEntry("text", "mailing_state", "eh_mailing_state"),
-        FormEntry("text", "mailing_zip", "eh_mailing_zip"),
-        FormEntry("text", "home_tel", "eh_home_tel"),
-        FormEntry("text", "email", "eh_email"),
-        FormEntry("text", "dob", "eh_dob"),
-        FormEntry("text", "aarp", "eh_aarp"),
-        FormEntry("select_mult", "add_coverage", "eh_add_coverage"),
-        FormEntry("text", "claim_num", "eh_claim_num"),
-        FormEntry("select", "hospital_month", "eh_hospital_month"),
-        FormEntry("select", "hospital_year", "eh_hospital_year"),
-        FormEntry("select", "medical_month", "eh_medical_month"),
-        FormEntry("select", "medical_year", "eh_medical_year"),
-        FormEntry("select", "plan_type", "eh_plan_type"),
-        FormEntry("text", "ins_company", "eh_ins_company"),
-        FormEntry("text", "policy_id", "eh_policy_id"),
-        FormEntry("text", "ins_start_date", "eh_ins_start_date"),
-        FormEntry("text", "ins_end_date", "eh_ins_end_date"),
-        FormEntry("select", "pref_payment", "eh_pref_payment"),
-        FormEntry("text", "bank_name", "eh_bank_name"),
-        FormEntry("text", "account_number", "eh_account_number"),
-        FormEntry("text", "routing_number", "eh_routing_number")
-    ]
 
 
-    minimum_buffer_min = 3     # four hours
-    # Check the access token
-    if views.ds_token_ok(minimum_buffer_min):
-        # 2. Call the worker method
-        # More data validation would be a good idea here
-        # Strip anything other than characters listed
-        pattern = re.compile("([^\w \-\@\.\,])+")
-
-        envelope_args = {
-            "signer_client_id": signer_client_id,
-            "form_data": [],
-
-            "ds_return_url": url_for("ds_return", _external=True)
-        }
-
-        # Populate envelope_args with the data from the form
-        for v in form_variable_names:
-            # print("name")
-            # print(v.name)
-            try:
-                if "pdf_" in v.name:
-                    v.value = request.form.get(v.name)
-                else:
-                    v.value = pattern.sub("", request.form.get(v.name))
-            except:
-                # If field is left blank, pass in empty string as value
-                v.value = ""
-            envelope_args["form_data"].append(v)
-
-        # These args are used by Docusign for the electronic signature
-        envelope_args["signer_email"] = request.form.get("email")
-        envelope_args["signer_name"]  = request.form.get("first_name") + " " + request.form.get("last_name")
-
-        # Pass args into worker
-        args = {
-            "account_id": session["ds_account_id"],
-            "base_path": session["ds_base_path"],
-            "ds_access_token": session["ds_access_token"],
-            "envelope_args": envelope_args
-        }
-
-        try:
-            results = worker(args)
-        except ApiException as err:
-            error_body_json = err and hasattr(err, "body") and err.body
-            # we can pull the DocuSign error code and message from the response body
-            error_body = json.loads(error_body_json)
-            error_code = error_body and "errorCode" in error_body and error_body["errorCode"]
-            error_message = error_body and "message" in error_body and error_body["message"]
 
 
-            print("ERROR FROM WORKER(): " + error_message)
-
-            # views.ds_logout_internal();
-
-            session["eg"] = "signing_ceremony"
-            return views.ds_callback()#views.ds_login();
-
-            #return create_controller();
-            # In production, may want to provide customized error messages and
-            # remediation advice to the user.
-            #
-            # return render_template("error.html",
-            #                        err=err,
-            #                        error_code=error_code,
-            #                        error_message=error_message
-            #                        )
-        if results:
-            # Redirect the user to the Signing Ceremony
-            # Don"t use an iFrame!
-            # State can be stored/recovered using the framework's session or a
-            # query parameter on the returnUrl (see the makeRecipientViewRequest method)
-
-
-            session["envelope_id"] = results["envelope_id"]
-            print("BBB")
-            print(results["redirect_url"]) # <-- this URL! Can we send this in an email??
-
-            #return redirect(results["redirect_url"])
-            url = ("signing_ceremony/" +
-                str(session["envelope_id"]) + "/" +
-                str(args["account_id"]) )
-
-            sign_later_url = request.base_url.replace("success", "") + url
-
-            return render_template('form_submitted.html', sign_now_url=results["redirect_url"], sign_later_url=sign_later_url)
-
-    else:
-        print("must_authenticate")
-        flash("Sorry, you need to re-authenticate.")
-        # We could store the parameters of the requested operation
-        # so it could be restarted automatically.
-        # But since it should be rare to have a token issue here,
-        # we'll make the user re-enter the form data after
-        # authentication.
-        session["eg"] = url_for(eg)
-        return redirect(url_for("ds_login"))
-
-
-# ***DS.snippet.0.start
-def worker(args):
-    """
-    1. Create the envelope request object
-    2. Send the envelope
-    3. Create the Recipient View request object
-    4. Obtain the recipient_view_url for the signing ceremony
-    """
-    # COMPOSITE TEMPLATES, FOR PDF FORM FILL
-    # api_client = create_api_client(base_path=args["base_path"], access_token=args["ds_access_token"])
-    # # CREATE COMPOSITE TEMPLATE
-    # templates_api = TemplatesApi(api_client)
-    #
-    # template_name = ""
-    # templates_results = templates_api.list_templates(account_id=args["account_id"], search_text=template_name)
-    # created_new_template = False
-    # if int(templates_results.result_set_size) > 0:
-    #     template_id = templates_results.envelope_templates[0].template_id
-    #     results_template_name = templates_results.envelope_templates[0].name
-    # else:
-    #
-    #     # Template not found -- so create it
-    #     # 2. create the template
-    #     template_req_object = make_template_req()
-    #     res = templates_api.create_template(account_id=args["account_id"], envelope_template=template_req_object)
-    #     # Pick the first template object within the result
-    #     templates_results = res.templates[0]
-    #     template_id = templates_results.template_id
-    #     results_template_name = templates_results.name
-    #     created_new_template = True
-
-    envelope_args = args["envelope_args"]
-
-    # envelope_args["template_id"] = template_id
-    # envelope_args["template_name"] = results_template_name
-    # envelope_args["created_new_template"] = created_new_template
-
-    # 1. Create the envelope request object
-    envelope_definition = make_envelope(envelope_args)
-
-    # 2. call Envelopes::create API method
-    # Exceptions will be caught by the calling function
-    api_client = ApiClient()
-    api_client.host = args["base_path"]
-    api_client.set_default_header("Authorization", "Bearer " + args["ds_access_token"])
-
-    envelope_api = EnvelopesApi(api_client)
-    results = envelope_api.create_envelope(args["account_id"], envelope_definition=envelope_definition)
-
-    envelope_id = results.envelope_id
-    app.logger.info(f"Envelope was created. EnvelopeId {envelope_id}")
-
-    view_req = create_view_request(envelope_id, args["account_id"], envelope_args["signer_client_id"], envelope_args["ds_return_url"], envelope_args["signer_name"], envelope_args["signer_email"], envelope_api)
-
-    # STORE ENVELOPE ARGS IN SESSION! This may be insecure; don't leave confidential client data exposed!
-    print("ENV ARGS")
-    print(envelope_args['form_data'])
-    csv_data = []
-    for f in envelope_args['form_data']:
-        csv_data.append( [f.name, f.value] )
-    session["csv_data"] = csv_data
-
-    return view_req
 
 def create_view_request(envelope_id, account_id, signer_client_id, return_url, signer_name, signer_email, envelope_api):
     # 3. Create the Recipient View request object
@@ -458,7 +441,7 @@ def setup_tabs(existingTabs, args):
             text_fields.append(
                 Text( # DocuSign SignHere field/tab
                     document_id = '1', page_number = '1',
-                    anchor_string = a.anchor, anchor_x_offset = 0, anchor_y_offset = 0, anchor_units = "inches",
+                    anchor_string = a.anchor, anchor_x_offset = 0, anchor_y_offset = -0.1, anchor_units = "inches",
                     # anchor_case_sensitive = True,
                     font = "helvetica", font_size = "size14",
                     tab_label = "", height = "23",
@@ -560,7 +543,8 @@ def make_envelope(args):
         documents.append(scope_of_appt_doc)
 
 
-
+    if not file_name:
+        print("ERROR: No file was selected") # WE should redirect back to the form in this case
     with open(path.join(demo_docs_path, file_name   ), "rb") as file:
         content_bytes = file.read()
     base64_file_content = base64.b64encode(content_bytes).decode("ascii")
@@ -643,157 +627,3 @@ def make_envelope(args):
     # print(signer.tabs)
 
     return envelope_definition
-# ***DS.snippet.0.end
-
-
-
-
-
-
-# def make_template_req():
-#     """Creates template req object"""
-#
-#     # document 1 (pdf)
-#     #
-#     # The template has two recipient roles.
-#     # recipient 1 - signer
-#     # recipient 2 - cc
-#     with open(path.join(demo_docs_path, "sample_form.pdf"), "rb") as file:
-#         content_bytes = file.read()
-#     base64_file_content = base64.b64encode(content_bytes).decode("ascii")
-#
-#     # Create the document model
-#     document = Document(  # create the DocuSign document object
-#         document_base64=base64_file_content,
-#         name="Lorem Ipsum",  # can be different from actual file name
-#         file_extension="pdf",  # many different document types are accepted
-#         document_id=1  # a label used to reference the doc
-#     )
-#
-#     # Create the signer recipient model
-#     signer = Signer(role_name="signer", recipient_id="1", routing_order="1")
-#
-#     # Create fields using absolute positioning
-#     # Create a sign_here tab (field on the document)
-#     sign_here = SignHere(document_id="1", page_number="1", x_position="191", y_position="148")
-#     check1 = Checkbox(
-#         document_id="1",
-#         page_number="1",
-#         x_position="75",
-#         y_position="417",
-#         tab_label="ckAuthorization"
-#     )
-#     check2 = Checkbox(
-#         document_id="1",
-#         page_number="1",
-#         x_position="75",
-#         y_position="447",
-#         tab_label="ckAuthentication"
-#     )
-#     check3 = Checkbox(
-#         document_id="1",
-#         page_number="1",
-#         x_position="75",
-#         y_position="478",
-#         tab_label="ckAgreement"
-#     )
-#     check4 = Checkbox(
-#         document_id="1",
-#         page_number="1",
-#         x_position="75",
-#         y_position="508",
-#         tab_label="ckAcknowledgement"
-#     )
-#     list1 = List(
-#         document_id="1",
-#         page_number="1",
-#         x_position="142",
-#         y_position="291",
-#         font="helvetica",
-#         font_size="size14",
-#         tab_label="list",
-#         required="false",
-#         list_items=[
-#             ListItem(text="Red", value="red"),
-#             ListItem(text="Orange", value="orange"),
-#             ListItem(text="Yellow", value="yellow"),
-#             ListItem(text="Green", value="green"),
-#             ListItem(text="Blue", value="blue"),
-#             ListItem(text="Indigo", value="indigo"),
-#             ListItem(text="Violet", value="violet")
-#         ]
-#     )
-#     number1 = Number(
-#         document_id="1",
-#         page_number="1",
-#         x_position="163",
-#         y_position="260",
-#         font="helvetica",
-#         font_size="size14",
-#         tab_label="numbersOnly",
-#         width="84",
-#         required="false"
-#     )
-#     radio_group = RadioGroup(
-#         document_id="1",
-#         group_name="radio1",
-#         radios=[
-#             Radio(
-#                 page_number="1", x_position="142", y_position="384",
-#                 value="white", required="false"
-#             ),
-#             Radio(
-#                 page_number="1", x_position="74", y_position="384",
-#                 value="red", required="false"
-#             ),
-#             Radio(
-#                 page_number="1", x_position="220", y_position="384",
-#                 value="blue", required="false"
-#             )
-#         ]
-#     )
-#     text = Text(
-#         document_id="1",
-#         page_number="1",
-#         x_position="153",
-#         y_position="230",
-#         font="helvetica",
-#         font_size="size14",
-#         tab_label="text",
-#         height="23",
-#         width="84",
-#         required="false"
-#     )
-#     # Add the tabs model to the signer
-#     # The Tabs object wants arrays of the different field/tab types
-#     signer.tabs = Tabs(
-#         sign_here_tabs=[sign_here],
-#         checkbox_tabs=[check1, check2, check3, check4],
-#         list_tabs=[list1],
-#         number_tabs=[number1],
-#         radio_group_tabs=[radio_group],
-#         text_tabs=[text]
-#     )
-#
-#     template_name = "DJ_TEST_TEMPLATE"
-#
-#     # Top object:
-#     template_request = EnvelopeTemplate(
-#         documents=[document], email_subject="Please sign this document",
-#         recipients=Recipients(signers=[signer]),
-#         description="Example template created via the API",
-#         name=template_name,
-#         shared="false",
-#         status="created"
-#     )
-#
-#     return template_request
-#
-#
-# def create_api_client(base_path, access_token):
-#     """Create api client and construct API headers"""
-#     api_client = ApiClient()
-#     api_client.host = base_path
-#     api_client.set_default_header(header_name="Authorization", header_value=f"Bearer {access_token}")
-#
-#     return api_client
